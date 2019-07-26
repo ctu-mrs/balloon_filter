@@ -23,6 +23,9 @@
 // Nav msgs
 #include <nav_msgs/Odometry.h>
 
+// Standard services
+#include <std_srvs/Trigger.h>
+
 // MRS stuff
 #include <mrs_lib/Profiler.h>
 #include <mrs_lib/ParamLoader.h>
@@ -35,7 +38,8 @@
 
 // local includes
 #include <balloon_planner/PlanningParamsConfig.h>
-#include <balloon_planner/ResetChosen.h>
+#include <balloon_planner/StartEstimation.h>
+#include <balloon_planner/AddExclusionZone.h>
 #include <balloon_planner/Lkf.h>
 #include <object_detect/PoseWithCovarianceArrayStamped.h>
 
@@ -62,6 +66,12 @@ namespace balloon_planner
   {
     pos_t pos;
     cov_t cov;
+  };
+
+  struct exclusion_zone_t
+  {
+    Eigen::Vector3d center;
+    double radius;
   };
 
   /* //{ class BalloonPlanner */
@@ -108,15 +118,23 @@ namespace balloon_planner
       ros::Publisher m_pub_chosen_balloon;
       ros::Publisher m_pub_used_meas;
 
-      ros::ServiceServer m_reset_chosen_server;
+      // service servers
+      ros::ServiceServer m_start_estimation_server;
+      ros::ServiceServer m_stop_estimation_server;
+      ros::ServiceServer m_reset_estimation_server;
+      ros::ServiceServer m_add_exclusion_zone_server;
+      ros::ServiceServer m_reset_exclusion_zones_server;
 
       ros::Timer m_main_loop_timer;
       //}
 
+      bool m_estimating;
+      Eigen::Vector3d m_initial_point;
       bool m_current_estimate_exists;
       Lkf m_current_estimate;
       ros::Time m_current_estimate_last_update;
       int m_current_estimate_n_updates;
+      std::vector<exclusion_zone_t> m_exclusion_zones;
 
     private:
 
@@ -155,7 +173,12 @@ namespace balloon_planner
 
       std::vector<pos_cov_t> message_to_positions(const detections_t& balloon_msg);
 
-      bool reset_chosen_callback(balloon_planner::ResetChosen::Request& req, balloon_planner::ResetChosen::Response& resp);
+      bool start_estimation(balloon_planner::StartEstimation::Request& req, balloon_planner::StartEstimation::Response& resp);
+      bool stop_estimation(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
+      bool reset_estimation(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
+      bool add_exclusion_zone(balloon_planner::AddExclusionZone::Request& req, balloon_planner::AddExclusionZone::Response& resp);
+      bool reset_exclusion_zones(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
+
       void load_dynparams(drcfg_t cfg);
 
   };

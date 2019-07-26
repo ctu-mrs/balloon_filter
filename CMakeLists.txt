@@ -26,13 +26,15 @@ generate_dynamic_reconfigure_options(
 #Generate services in the 'srv' folder
 add_service_files(
    FILES
-   ResetChosen.srv
+   StartEstimation.srv
+   AddExclusionZone.srv
  )
 
 ## Generate added messages and services with any dependencies listed here
  generate_messages(
    DEPENDENCIES
    std_msgs
+   geometry_msgs
  )
 
 catkin_package(

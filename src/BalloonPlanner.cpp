@@ -333,7 +333,11 @@ void BalloonPlanner::onInit()
     ros::shutdown();
   }
 
-  m_reset_chosen_server = nh.advertiseService("reset_chosen", &BalloonPlanner::reset_chosen_callback, this);
+  m_start_estimation_server = nh.advertiseService("start_estimation", &BalloonPlanner::start_estimation, this);;
+  m_stop_estimation_server = nh.advertiseService("stop_estimation", &BalloonPlanner::stop_estimation, this);;
+  m_reset_estimation_server = nh.advertiseService("reset_estimation", &BalloonPlanner::reset_estimation, this);;
+  m_add_exclusion_zone_server = nh.advertiseService("add_exclusion_zone", &BalloonPlanner::add_exclusion_zone, this);;
+  m_reset_exclusion_zones_server = nh.advertiseService("reset_exclusion_zones", &BalloonPlanner::reset_exclusion_zones, this);;
   //}
 
   /* publishers //{ */
@@ -360,6 +364,7 @@ void BalloonPlanner::onInit()
   }
   reset_current_estimate();
   m_is_initialized = true;
+  m_estimating = false;
 
   /* timers  //{ */
 
@@ -372,12 +377,52 @@ void BalloonPlanner::onInit()
 
 //}
 
-  /* BalloonPlanner::reset_chosen_callback() method //{ */
-  
-  bool BalloonPlanner::reset_chosen_callback(balloon_planner::ResetChosen::Request& req, balloon_planner::ResetChosen::Response& resp)
+  /* BalloonPlanner::reset_estimation() method //{ */
+
+  bool BalloonPlanner::start_estimation(balloon_planner::StartEstimation::Request& req, balloon_planner::StartEstimation::Response& resp)
   {
     reset_current_estimate();
-    resp.message = "Current chosen balloon was reset.";
+    m_initial_point = Eigen::Vector3d(req.inital_point.x, req.inital_point.y, req.inital_point.z);
+    m_estimating = true;
+    std::stringstream strstr;
+    strstr << "Starting estimation at point " << m_initial_point.transpose() << ".";
+    resp.message = strstr.str();
+    resp.success = true;
+    return true;
+  }
+
+  bool BalloonPlanner::stop_estimation([[maybe_unused]] std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp)
+  {
+    m_estimating = false;
+    resp.message = "Stopped estimation.";
+    resp.success = true;
+    return true;
+  }
+
+  bool BalloonPlanner::reset_estimation([[maybe_unused]] std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp)
+  {
+    reset_current_estimate();
+    resp.message = "Estimation was reset.";
+    resp.success = true;
+    return true;
+  }
+
+  bool BalloonPlanner::add_exclusion_zone(balloon_planner::AddExclusionZone::Request& req, balloon_planner::AddExclusionZone::Response& resp)
+  {
+    const Eigen::Vector3d new_zone_pt(req.zone_center.x, req.zone_center.y, req.zone_center.z);
+    const double new_zone_radius = req.zone_radius;
+    m_exclusion_zones.push_back({new_zone_pt, new_zone_radius});
+    std::stringstream strstr;
+    strstr << "Adding exclusion zone with center " << new_zone_pt.transpose() << " and radius " << new_zone_radius << "m for a total of " << m_exclusion_zones.size() << " zones.";
+    resp.message = strstr.str();
+    resp.success = true;
+    return true;
+  }
+
+  bool BalloonPlanner::reset_exclusion_zones([[maybe_unused]] std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp)
+  {
+    m_exclusion_zones.clear();
+    resp.message = "Exclusion zones were reset.";
     resp.success = true;
     return true;
   }
