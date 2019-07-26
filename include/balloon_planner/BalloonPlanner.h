@@ -161,6 +161,7 @@ namespace balloon_planner
 
       cov_t msg2cov(const ros_cov_t& msg_cov);
       cov_t rotate_covariance(const cov_t& covariance, const cov_t& rotation);
+      bool point_in_exclusion_zone(const pos_t& pt, const std::vector<exclusion_zone_t>& exclusion_zones);
       bool point_valid(const pos_t& pt);
 
       bool update_current_estimate(const std::vector<pos_cov_t>& measurements, const ros::Time& stamp, pos_cov_t& used_meas);

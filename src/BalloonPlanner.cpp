@@ -8,6 +8,12 @@ namespace balloon_planner
   {
     load_dynparams(m_drmgr_ptr->config);
 
+    if (!m_estimating)
+    {
+      ROS_INFO_THROTTLE(1.0, "[%s]: Estimation stopped, skipping.", m_node_name.c_str());
+      return;
+    }
+
     if (m_sh_balloons->new_data())
     {
       const auto balloons = m_sh_balloons->get_data();
@@ -248,13 +254,26 @@ namespace balloon_planner
   }
   //}
 
+  /* point_in_exclusion_zone() method //{ */
+  bool BalloonPlanner::point_in_exclusion_zone(const pos_t& pt, const std::vector<exclusion_zone_t>& exclusion_zones)
+  {
+    for (const auto& zone : exclusion_zones)
+    {
+      const double dist_from_center = (pt - zone.center).norm();
+      if (dist_from_center < zone.radius)
+        return true;
+    }
+    return false;
+  }
+  //}
 
   /* point_valid() method //{ */
   bool BalloonPlanner::point_valid(const pos_t& pt)
   {
     const bool height_valid = pt.z() > m_z_bounds_min && pt.z() < m_z_bounds_max;
     const bool sane_values = !pt.array().isNaN().any() && !pt.array().isInf().any();
-    return height_valid && sane_values;
+    const bool not_excluded = !point_in_exclusion_zone(pt, m_exclusion_zones);
+    return height_valid && sane_values && not_excluded;
   }
   //}
 
@@ -377,7 +396,7 @@ void BalloonPlanner::onInit()
 
 //}
 
-  /* BalloonPlanner::reset_estimation() method //{ */
+  /* service callbacks //{ */
 
   bool BalloonPlanner::start_estimation(balloon_planner::StartEstimation::Request& req, balloon_planner::StartEstimation::Response& resp)
   {
