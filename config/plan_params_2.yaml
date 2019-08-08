@@ -5,5 +5,5 @@ max_time_since_update: 2.0 # seconds
 min_updates_to_confirm: 10
 process_noise_std: 1 # meters
 z_bounds: # measurements outside these bounds will be ignored
-  min: 1  # metres
-  max: 4.6 # metres
+  min: 5.4  # metres
+  max: 10 # metres
