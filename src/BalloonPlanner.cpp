@@ -266,6 +266,16 @@ namespace balloon_planner
     return false;
   }
   //}
+  
+  /* point_in_area() method //{ */
+  bool BalloonPlanner::point_in_area(const pos_t& pt,Eigen::Vector3d area_center, double radius )
+  {
+      const double dist_from_center = (pt - area_center).norm();
+      if (dist_from_center < radius)
+        return true;
+    return false;
+  }
+  //}
 
   /* point_valid() method //{ */
   bool BalloonPlanner::point_valid(const pos_t& pt)
@@ -273,7 +283,8 @@ namespace balloon_planner
     const bool height_valid = pt.z() > m_z_bounds_min && pt.z() < m_z_bounds_max;
     const bool sane_values = !pt.array().isNaN().any() && !pt.array().isInf().any();
     const bool not_excluded = !point_in_exclusion_zone(pt, m_exclusion_zones);
-    return height_valid && sane_values && not_excluded;
+    const bool in_area = point_in_area(pt, m_initial_point,  estimate_rad);
+    return height_valid && sane_values && not_excluded && in_area;
   }
   //}
 
@@ -402,6 +413,7 @@ void BalloonPlanner::onInit()
   {
     reset_current_estimate();
     m_initial_point = Eigen::Vector3d(req.inital_point.x, req.inital_point.y, req.inital_point.z);
+    estimate_rad = req.radius;
     m_estimating = true;
     std::stringstream strstr;
     strstr << "Starting estimation at point " << m_initial_point.transpose() << ".";

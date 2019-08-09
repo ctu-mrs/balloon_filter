@@ -1,4 +1,5 @@
 geometry_msgs/Point inital_point
+float32 radius
 ---
 bool success
 string message
