@@ -302,8 +302,8 @@ namespace balloon_planner
   /* load_dynparams() method //{ */
   void BalloonPlanner::load_dynparams(drcfg_t cfg)
   {
-    m_z_bounds_min = cfg.z_bounds_min;
-    m_z_bounds_max = cfg.z_bounds_max;
+    m_z_bounds_min = cfg.z_bounds__min;
+    m_z_bounds_max = cfg.z_bounds__max;
     m_gating_distance = cfg.gating_distance;
     m_max_time_since_update = cfg.max_time_since_update;
     m_min_updates_to_confirm = cfg.min_updates_to_confirm;
@@ -324,6 +324,8 @@ namespace balloon_planner
     // LOAD DYNAMIC PARAMETERS
     ROS_INFO("[%s]: LOADING DYNAMIC PARAMETERS", m_node_name.c_str());
     m_drmgr_ptr = std::make_unique<drmgr_t>(nh, m_node_name);
+    m_drmgr_ptr->load_param("z_bounds/min", m_z_bounds_min);
+    m_drmgr_ptr->load_param("z_bounds/max", m_z_bounds_max);
     if (!m_drmgr_ptr->loaded_successfully())
     {
       ROS_ERROR("Some dynamic parameter default values were not loaded successfully, ending the node");
@@ -340,8 +342,6 @@ namespace balloon_planner
     pl.load_param("max_time_since_update", m_max_time_since_update);
     pl.load_param("min_updates_to_confirm", m_min_updates_to_confirm);
     pl.load_param("process_noise_std", m_process_noise_std);
-    m_drmgr_ptr->load_param("z_bounds/min", m_z_bounds_min);
-    m_drmgr_ptr->load_param("z_bounds/max", m_z_bounds_max);
 
     if (!pl.loaded_successfully())
     {
