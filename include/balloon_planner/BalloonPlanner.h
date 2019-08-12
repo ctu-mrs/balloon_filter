@@ -68,7 +68,7 @@ namespace balloon_planner
     cov_t cov;
   };
 
-  struct exclusion_zone_t
+  struct sphere_t
   {
     Eigen::Vector3d center;
     double radius;
@@ -129,13 +129,12 @@ namespace balloon_planner
       //}
 
       bool m_estimating;
-      Eigen::Vector3d m_initial_point;
-      double estimate_rad;
+      sphere_t m_initial_area;
       bool m_current_estimate_exists;
       Lkf m_current_estimate;
       ros::Time m_current_estimate_last_update;
       int m_current_estimate_n_updates;
-      std::vector<exclusion_zone_t> m_exclusion_zones;
+      std::vector<sphere_t> m_exclusion_zones;
 
     private:
 
@@ -162,8 +161,8 @@ namespace balloon_planner
 
       cov_t msg2cov(const ros_cov_t& msg_cov);
       cov_t rotate_covariance(const cov_t& covariance, const cov_t& rotation);
-      bool point_in_exclusion_zone(const pos_t& pt, const std::vector<exclusion_zone_t>& exclusion_zones);
-      bool point_in_area(const pos_t& pt, Eigen::Vector3d area_center, double area_rad  );
+      bool point_in_exclusion_zone(const pos_t& pt, const std::vector<sphere_t>& exclusion_zones);
+      bool point_in_sphere(const pos_t& pt, const sphere_t sphere);
       bool point_valid(const pos_t& pt);
 
       bool update_current_estimate(const std::vector<pos_cov_t>& measurements, const ros::Time& stamp, pos_cov_t& used_meas);

@@ -17,7 +17,7 @@ namespace balloon_planner
     if (m_sh_balloons->new_data())
     {
       const auto balloons = m_sh_balloons->get_data();
-  
+
       if (!balloons.poses.empty())
       {
         ROS_INFO("[%s]: Processing %lu new detections vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv", m_node_name.c_str(), balloons.poses.size());
@@ -40,7 +40,6 @@ namespace balloon_planner
             m_pub_used_meas.publish(to_output_message(used_meas, header));
           }
           //}
-
         }
         ros::Duration del = ros::Time::now() - balloons.header.stamp;
         ROS_INFO_STREAM("delay (from image acquisition): " << del.toSec() * 1000.0 << "ms");
@@ -61,7 +60,8 @@ namespace balloon_planner
       header.frame_id = m_world_frame;
       header.stamp = m_current_estimate_last_update;
       m_pub_chosen_balloon.publish(to_output_message({m_current_estimate.x, m_current_estimate.P}, header));
-      ROS_INFO_THROTTLE(1.0, "[%s]: Current chosen balloon position: [%.2f, %.2f, %.2f]", m_node_name.c_str(), m_current_estimate.x.x(), m_current_estimate.x.y(), m_current_estimate.x.z());
+      ROS_INFO_THROTTLE(1.0, "[%s]: Current chosen balloon position: [%.2f, %.2f, %.2f]", m_node_name.c_str(), m_current_estimate.x.x(),
+                        m_current_estimate.x.y(), m_current_estimate.x.z());
     }
   }
   //}
@@ -73,9 +73,10 @@ namespace balloon_planner
     bool meas_valid = find_closest_to(measurements, m_current_estimate.x, closest_meas, true);
     if (meas_valid)
     {
-      ROS_INFO("[%s]: Updating current estimate using point [%.2f, %.2f, %.2f]", m_node_name.c_str(), closest_meas.pos.x(), closest_meas.pos.y(), closest_meas.pos.z());
+      ROS_INFO("[%s]: Updating current estimate using point [%.2f, %.2f, %.2f]", m_node_name.c_str(), closest_meas.pos.x(), closest_meas.pos.y(),
+               closest_meas.pos.z());
       const double dt = (stamp - m_current_estimate_last_update).toSec();
-      m_current_estimate.Q = dt*m_process_noise_std*Lkf::R_t::Identity();
+      m_current_estimate.Q = dt * m_process_noise_std * Lkf::R_t::Identity();
       m_current_estimate.prediction_step();
       m_current_estimate.z = closest_meas.pos;
       m_current_estimate.R = closest_meas.cov;
@@ -86,7 +87,8 @@ namespace balloon_planner
       used_meas = closest_meas;
     } else
     {
-      ROS_INFO("[%s]: No point is close enough to [%.2f, %.2f, %.2f]", m_node_name.c_str(), m_current_estimate.x.x(), m_current_estimate.x.y(), m_current_estimate.x.z());
+      ROS_INFO("[%s]: No point is close enough to [%.2f, %.2f, %.2f]", m_node_name.c_str(), m_current_estimate.x.x(), m_current_estimate.x.y(),
+               m_current_estimate.x.z());
     }
     return meas_valid;
   }
@@ -99,7 +101,8 @@ namespace balloon_planner
     bool meas_valid = find_closest(measurements, closest_meas);
     if (meas_valid)
     {
-      ROS_INFO("[%s]: Initializing estimate using point [%.2f, %.2f, %.2f]", m_node_name.c_str(), closest_meas.pos.x(), closest_meas.pos.y(), closest_meas.pos.z());
+      ROS_INFO("[%s]: Initializing estimate using point [%.2f, %.2f, %.2f]", m_node_name.c_str(), closest_meas.pos.x(), closest_meas.pos.y(),
+               closest_meas.pos.z());
       m_current_estimate.x = closest_meas.pos;
       m_current_estimate.P = closest_meas.cov;
       m_current_estimate_exists = true;
@@ -118,7 +121,7 @@ namespace balloon_planner
   geometry_msgs::PoseWithCovarianceStamped BalloonPlanner::to_output_message(const pos_cov_t& estimate, const std_msgs::Header& header)
   {
     geometry_msgs::PoseWithCovarianceStamped ret;
-  
+
     ret.header = header;
     ret.pose.pose.position.x = estimate.pos.x();
     ret.pose.pose.position.y = estimate.pos.y();
@@ -127,7 +130,7 @@ namespace balloon_planner
     ret.pose.pose.orientation.y = 0.0;
     ret.pose.pose.orientation.z = 0.0;
     ret.pose.pose.orientation.w = 1.0;
-  
+
     for (int r = 0; r < 6; r++)
     {
       for (int c = 0; c < 6; c++)
@@ -151,7 +154,8 @@ namespace balloon_planner
     Eigen::Affine3d m2w_tf;
     bool tf_ok = get_transform_to_world(m_uav_frame_id, ros::Time::now(), m2w_tf);
     if (!tf_ok)
-      return pos_t(0, 0, 0);;
+      return pos_t(0, 0, 0);
+    ;
     return m2w_tf.translation();
   }
   //}
@@ -160,10 +164,7 @@ namespace balloon_planner
   bool BalloonPlanner::find_closest_to(const std::vector<pos_cov_t>& measurements, const pos_t& to_position, pos_cov_t& closest_out, bool use_gating)
   {
     double min_dist = std::numeric_limits<double>::infinity();
-    pos_cov_t closest_pt{
-       std::numeric_limits<double>::quiet_NaN()*pos_t::Ones(),
-       std::numeric_limits<double>::quiet_NaN()*cov_t::Ones()
-    };
+    pos_cov_t closest_pt{std::numeric_limits<double>::quiet_NaN() * pos_t::Ones(), std::numeric_limits<double>::quiet_NaN() * cov_t::Ones()};
     for (const auto& pt : measurements)
     {
       const double cur_dist = (to_position - pt.pos).norm();
@@ -203,20 +204,20 @@ namespace balloon_planner
   std::vector<pos_cov_t> BalloonPlanner::message_to_positions(const detections_t& balloon_msg)
   {
     std::vector<pos_cov_t> ret;
-  
+
     // Construct a new world to sensor transform
     Eigen::Affine3d s2w_tf;
     bool tf_ok = get_transform_to_world(balloon_msg.header.frame_id, balloon_msg.header.stamp, s2w_tf);
     if (!tf_ok)
       return ret;
     const Eigen::Matrix3d s2w_rot = s2w_tf.rotation();
-  
+
     ret.reserve(balloon_msg.poses.size());
     for (size_t it = 0; it < balloon_msg.poses.size(); it++)
     {
       const auto msg_pos = balloon_msg.poses[it].pose;
       const auto msg_cov = balloon_msg.poses[it].covariance;
-      const pos_t pos = s2w_tf*pos_t(msg_pos.position.x, msg_pos.position.y, msg_pos.position.z);
+      const pos_t pos = s2w_tf * pos_t(msg_pos.position.x, msg_pos.position.y, msg_pos.position.z);
       if (point_valid(pos))
       {
         const cov_t cov = rotate_covariance(msg2cov(msg_cov), s2w_rot);
@@ -224,10 +225,11 @@ namespace balloon_planner
         ret.push_back(pos_cov);
       } else
       {
-        ROS_INFO("[%s]: Skipping invalid point [%.2f, %.2f, %.2f] (original: [%.2f %.2f %.2f])", m_node_name.c_str(), pos.x(), pos.y(), pos.z(), msg_pos.position.x, msg_pos.position.y, msg_pos.position.z);
+        ROS_INFO("[%s]: Skipping invalid point [%.2f, %.2f, %.2f] (original: [%.2f %.2f %.2f])", m_node_name.c_str(), pos.x(), pos.y(), pos.z(),
+                 msg_pos.position.x, msg_pos.position.y, msg_pos.position.z);
       }
     }
-  
+
     return ret;
   }
   //}
@@ -254,25 +256,24 @@ namespace balloon_planner
   }
   //}
 
-  /* point_in_exclusion_zone() method //{ */
-  bool BalloonPlanner::point_in_exclusion_zone(const pos_t& pt, const std::vector<exclusion_zone_t>& exclusion_zones)
+  /* point_in_sphere() method //{ */
+  bool BalloonPlanner::point_in_sphere(const pos_t& pt, const sphere_t sphere)
   {
-    for (const auto& zone : exclusion_zones)
-    {
-      const double dist_from_center = (pt - zone.center).norm();
-      if (dist_from_center < zone.radius)
-        return true;
-    }
+    const double dist_from_center = (pt - sphere.center).norm();
+    if (dist_from_center < sphere.radius)
+      return true;
     return false;
   }
   //}
-  
-  /* point_in_area() method //{ */
-  bool BalloonPlanner::point_in_area(const pos_t& pt,Eigen::Vector3d area_center, double radius )
+
+  /* point_in_exclusion_zone() method //{ */
+  bool BalloonPlanner::point_in_exclusion_zone(const pos_t& pt, const std::vector<sphere_t>& exclusion_zones)
   {
-      const double dist_from_center = (pt - area_center).norm();
-      if (dist_from_center < radius)
+    for (const auto& zone : exclusion_zones)
+    {
+      if (point_in_sphere(pt, zone))
         return true;
+    }
     return false;
   }
   //}
@@ -283,7 +284,7 @@ namespace balloon_planner
     const bool height_valid = pt.z() > m_z_bounds_min && pt.z() < m_z_bounds_max;
     const bool sane_values = !pt.array().isNaN().any() && !pt.array().isInf().any();
     const bool not_excluded = !point_in_exclusion_zone(pt, m_exclusion_zones);
-    const bool in_area = point_in_area(pt, m_initial_point,  estimate_rad);
+    const bool in_area = point_in_sphere(pt, m_initial_area);
     return height_valid && sane_values && not_excluded && in_area;
   }
   //}
@@ -309,114 +310,119 @@ namespace balloon_planner
   }
   //}
 
-/* onInit() //{ */
+  /* onInit() //{ */
 
-void BalloonPlanner::onInit()
-{
-
-  ROS_INFO("[%s]: Initializing", m_node_name.c_str());
-  ros::NodeHandle nh = nodelet::Nodelet::getMTPrivateNodeHandle();
-  ros::Time::waitForValid();
-
-  /* load parameters //{ */
-
-  // LOAD DYNAMIC PARAMETERS
-  ROS_INFO("[%s]: LOADING DYNAMIC PARAMETERS", m_node_name.c_str());
-  m_drmgr_ptr = std::make_unique<drmgr_t>(nh, m_node_name);
-  if (!m_drmgr_ptr->loaded_successfully())
+  void BalloonPlanner::onInit()
   {
-    ROS_ERROR("Some dynamic parameter default values were not loaded successfully, ending the node");
-    ros::shutdown();
+
+    ROS_INFO("[%s]: Initializing", m_node_name.c_str());
+    ros::NodeHandle nh = nodelet::Nodelet::getMTPrivateNodeHandle();
+    ros::Time::waitForValid();
+
+    /* load parameters //{ */
+
+    // LOAD DYNAMIC PARAMETERS
+    ROS_INFO("[%s]: LOADING DYNAMIC PARAMETERS", m_node_name.c_str());
+    m_drmgr_ptr = std::make_unique<drmgr_t>(nh, m_node_name);
+    if (!m_drmgr_ptr->loaded_successfully())
+    {
+      ROS_ERROR("Some dynamic parameter default values were not loaded successfully, ending the node");
+      ros::shutdown();
+    }
+
+    ROS_INFO("[%s]: LOADING STATIC PARAMETERS", m_node_name.c_str());
+    mrs_lib::ParamLoader pl(nh, m_node_name);
+
+    double planning_period = pl.load_param2<double>("planning_period");
+    pl.load_param("world_frame", m_world_frame);
+    pl.load_param("uav_frame_id", m_uav_frame_id);
+    pl.load_param("gating_distance", m_gating_distance);
+    pl.load_param("max_time_since_update", m_max_time_since_update);
+    pl.load_param("min_updates_to_confirm", m_min_updates_to_confirm);
+    pl.load_param("process_noise_std", m_process_noise_std);
+    m_drmgr_ptr->load_param("z_bounds/min", m_z_bounds_min);
+    m_drmgr_ptr->load_param("z_bounds/max", m_z_bounds_max);
+
+    if (!pl.loaded_successfully())
+    {
+      ROS_ERROR("Some compulsory parameters were not loaded successfully, ending the node");
+      ros::shutdown();
+    }
+
+    //}
+
+    /* subscribers //{ */
+
+    m_tf_listener_ptr = std::make_unique<tf2_ros::TransformListener>(m_tf_buffer, m_node_name);
+    mrs_lib::SubscribeMgr smgr(nh);
+    constexpr bool time_consistent = true;
+    m_sh_balloons =
+        smgr.create_handler_threadsafe<detections_t, time_consistent>("balloon_detections", 10, ros::TransportHints().tcpNoDelay(), ros::Duration(5.0));
+
+    if (!smgr.loaded_successfully())
+    {
+      ROS_ERROR("Unable to subscribe to some topics, ending the node");
+      ros::shutdown();
+    }
+
+    m_start_estimation_server = nh.advertiseService("start_estimation", &BalloonPlanner::start_estimation, this);
+    ;
+    m_stop_estimation_server = nh.advertiseService("stop_estimation", &BalloonPlanner::stop_estimation, this);
+    ;
+    m_reset_estimation_server = nh.advertiseService("reset_estimation", &BalloonPlanner::reset_estimation, this);
+    ;
+    m_add_exclusion_zone_server = nh.advertiseService("add_exclusion_zone", &BalloonPlanner::add_exclusion_zone, this);
+    ;
+    m_reset_exclusion_zones_server = nh.advertiseService("reset_exclusion_zones", &BalloonPlanner::reset_exclusion_zones, this);
+    ;
+    //}
+
+    /* publishers //{ */
+
+    m_pub_chosen_balloon = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("balloon_chosen_out", 1);
+    m_pub_used_meas = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("balloon_detection_used", 1);
+
+    //}
+
+    /* profiler //{ */
+
+    m_profiler_ptr = std::make_unique<mrs_lib::Profiler>(nh, m_node_name, false);
+
+    //}
+
+    {
+      Lkf::A_t A = Lkf::A_t::Identity();
+      Lkf::B_t B;
+      Lkf::H_t H = Lkf::H_t::Identity();
+      Lkf::P_t P = std::numeric_limits<double>::quiet_NaN() * Lkf::P_t::Identity();
+      Lkf::Q_t Q = m_process_noise_std * m_process_noise_std * Lkf::Q_t::Identity();
+      Lkf::R_t R = std::numeric_limits<double>::quiet_NaN() * Lkf::R_t::Identity();
+      m_current_estimate = Lkf(A, B, H, P, Q, R);
+    }
+    reset_current_estimate();
+    m_is_initialized = true;
+    m_estimating = false;
+
+    /* timers  //{ */
+
+    m_main_loop_timer = nh.createTimer(ros::Duration(planning_period), &BalloonPlanner::main_loop, this);
+
+    //}
+
+    ROS_INFO("[%s]: initialized", m_node_name.c_str());
   }
 
-  ROS_INFO("[%s]: LOADING STATIC PARAMETERS", m_node_name.c_str());
-  mrs_lib::ParamLoader pl(nh, m_node_name);
-
-  double planning_period = pl.load_param2<double>("planning_period");
-  pl.load_param("world_frame", m_world_frame);
-  pl.load_param("uav_frame_id", m_uav_frame_id);
-  pl.load_param("gating_distance", m_gating_distance);
-  pl.load_param("max_time_since_update", m_max_time_since_update);
-  pl.load_param("min_updates_to_confirm", m_min_updates_to_confirm);
-  pl.load_param("process_noise_std", m_process_noise_std);
-  m_drmgr_ptr->load_param("z_bounds/min", m_z_bounds_min);
-  m_drmgr_ptr->load_param("z_bounds/max", m_z_bounds_max);
-
-  if (!pl.loaded_successfully())
-  {
-    ROS_ERROR("Some compulsory parameters were not loaded successfully, ending the node");
-    ros::shutdown();
-  }
-
   //}
-
-  /* subscribers //{ */
-
-  m_tf_listener_ptr = std::make_unique<tf2_ros::TransformListener>(m_tf_buffer, m_node_name);
-  mrs_lib::SubscribeMgr smgr(nh);
-  constexpr bool time_consistent = true;
-  m_sh_balloons = smgr.create_handler_threadsafe<detections_t, time_consistent>("balloon_detections", 10, ros::TransportHints().tcpNoDelay(), ros::Duration(5.0));
-
-  if (!smgr.loaded_successfully())
-  {
-    ROS_ERROR("Unable to subscribe to some topics, ending the node");
-    ros::shutdown();
-  }
-
-  m_start_estimation_server = nh.advertiseService("start_estimation", &BalloonPlanner::start_estimation, this);;
-  m_stop_estimation_server = nh.advertiseService("stop_estimation", &BalloonPlanner::stop_estimation, this);;
-  m_reset_estimation_server = nh.advertiseService("reset_estimation", &BalloonPlanner::reset_estimation, this);;
-  m_add_exclusion_zone_server = nh.advertiseService("add_exclusion_zone", &BalloonPlanner::add_exclusion_zone, this);;
-  m_reset_exclusion_zones_server = nh.advertiseService("reset_exclusion_zones", &BalloonPlanner::reset_exclusion_zones, this);;
-  //}
-
-  /* publishers //{ */
-
-  m_pub_chosen_balloon = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("balloon_chosen_out", 1);
-  m_pub_used_meas = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("balloon_detection_used", 1);
-
-  //}
-
-  /* profiler //{ */
-
-  m_profiler_ptr = std::make_unique<mrs_lib::Profiler>(nh, m_node_name, false);
-
-  //}
-
-  {
-    Lkf::A_t A = Lkf::A_t::Identity();
-    Lkf::B_t B;
-    Lkf::H_t H = Lkf::H_t::Identity();
-    Lkf::P_t P = std::numeric_limits<double>::quiet_NaN()*Lkf::P_t::Identity();
-    Lkf::Q_t Q = m_process_noise_std*m_process_noise_std*Lkf::Q_t::Identity();
-    Lkf::R_t R = std::numeric_limits<double>::quiet_NaN()*Lkf::R_t::Identity();
-    m_current_estimate = Lkf(A, B, H, P, Q, R);
-  }
-  reset_current_estimate();
-  m_is_initialized = true;
-  m_estimating = false;
-
-  /* timers  //{ */
-
-  m_main_loop_timer = nh.createTimer(ros::Duration(planning_period), &BalloonPlanner::main_loop, this);
-
-  //}
-
-  ROS_INFO("[%s]: initialized", m_node_name.c_str());
-}
-
-//}
 
   /* service callbacks //{ */
 
   bool BalloonPlanner::start_estimation(balloon_planner::StartEstimation::Request& req, balloon_planner::StartEstimation::Response& resp)
   {
     reset_current_estimate();
-    m_initial_point = Eigen::Vector3d(req.inital_point.x, req.inital_point.y, req.inital_point.z);
-    estimate_rad = req.radius;
+    m_initial_area = {Eigen::Vector3d(req.inital_point.x, req.inital_point.y, req.inital_point.z), req.radius};
     m_estimating = true;
     std::stringstream strstr;
-    strstr << "Starting estimation at point " << m_initial_point.transpose() << ".";
+    strstr << "Starting estimation at point " << m_initial_area.center.transpose() << " with search radius " << m_initial_area.radius << ".";
     resp.message = strstr.str();
     resp.success = true;
     return true;
@@ -444,7 +450,8 @@ void BalloonPlanner::onInit()
     const double new_zone_radius = req.zone_radius;
     m_exclusion_zones.push_back({new_zone_pt, new_zone_radius});
     std::stringstream strstr;
-    strstr << "Adding exclusion zone with center " << new_zone_pt.transpose() << " and radius " << new_zone_radius << "m for a total of " << m_exclusion_zones.size() << " zones.";
+    strstr << "Adding exclusion zone with center " << new_zone_pt.transpose() << " and radius " << new_zone_radius << "m for a total of "
+           << m_exclusion_zones.size() << " zones.";
     resp.message = strstr.str();
     resp.success = true;
     return true;
@@ -457,7 +464,7 @@ void BalloonPlanner::onInit()
     resp.success = true;
     return true;
   }
-  
+
   //}
 
 }  // namespace balloon_planner
