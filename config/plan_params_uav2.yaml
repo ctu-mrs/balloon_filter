@@ -1,0 +1,3 @@
+z_bounds: # measurements outside these bounds will be ignored
+  min: 5.4  # metres
+  max: 10 # metres
