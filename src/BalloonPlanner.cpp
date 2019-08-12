@@ -324,9 +324,6 @@ namespace balloon_planner
     // LOAD DYNAMIC PARAMETERS
     ROS_INFO("[%s]: LOADING DYNAMIC PARAMETERS", m_node_name.c_str());
     m_drmgr_ptr = std::make_unique<drmgr_t>(nh, m_node_name);
-    m_drmgr_ptr->load_param("z_bounds/min", m_drmgr_ptr->config.z_bounds__min);
-    m_drmgr_ptr->load_param("z_bounds/max", m_drmgr_ptr->config.z_bounds__max);
-    m_drmgr_ptr->update_config();
     if (!m_drmgr_ptr->loaded_successfully())
     {
       ROS_ERROR("Some dynamic parameter default values were not loaded successfully, ending the node");
