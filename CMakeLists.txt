@@ -59,7 +59,6 @@ include_directories(
 
 ## Declare a C++ executable
 add_library(BalloonPlanner
-  src/Lkf.cpp
   src/BalloonPlanner.cpp
   )
 

@@ -355,24 +355,13 @@ namespace balloon_planner
     mrs_lib::SubscribeMgr smgr(nh);
     constexpr bool time_consistent = true;
     m_sh_balloons =
-        smgr.create_handler_threadsafe<detections_t, time_consistent>("balloon_detections", 10, ros::TransportHints().tcpNoDelay(), ros::Duration(5.0));
-
-    if (!smgr.loaded_successfully())
-    {
-      ROS_ERROR("Unable to subscribe to some topics, ending the node");
-      ros::shutdown();
-    }
+        smgr.create_handler<detections_t, time_consistent>("balloon_detections", ros::Duration(5.0));
 
     m_start_estimation_server = nh.advertiseService("start_estimation", &BalloonPlanner::start_estimation, this);
-    ;
     m_stop_estimation_server = nh.advertiseService("stop_estimation", &BalloonPlanner::stop_estimation, this);
-    ;
     m_reset_estimation_server = nh.advertiseService("reset_estimation", &BalloonPlanner::reset_estimation, this);
-    ;
     m_add_exclusion_zone_server = nh.advertiseService("add_exclusion_zone", &BalloonPlanner::add_exclusion_zone, this);
-    ;
     m_reset_exclusion_zones_server = nh.advertiseService("reset_exclusion_zones", &BalloonPlanner::reset_exclusion_zones, this);
-    ;
     //}
 
     /* publishers //{ */
