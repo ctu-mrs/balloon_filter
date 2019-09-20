@@ -16,7 +16,7 @@ namespace balloon_planner
 
     if (m_sh_balloons->new_data())
     {
-      const auto balloons = m_sh_balloons->get_data();
+      const auto balloons = *(m_sh_balloons->get_data());
 
       if (!balloons.poses.empty())
       {
