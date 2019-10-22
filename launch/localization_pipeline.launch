@@ -33,7 +33,7 @@
   </include>
 
   <!-- single object localization -->
-  <include file="$(find balloon_planner)/launch/choose_balloon.launch">
+  <include file="$(find balloon_filter)/launch/choose_balloon.launch">
     <arg name="standalone" value="false" />
     <arg name="manager"    value="$(arg manager)" />
   </include>

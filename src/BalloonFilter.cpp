@@ -1,10 +1,10 @@
-#include <balloon_planner/BalloonPlanner.h>
+#include <balloon_filter/BalloonFilter.h>
 
-namespace balloon_planner
+namespace balloon_filter
 {
 
   /* main_loop() method //{ */
-  void BalloonPlanner::main_loop([[maybe_unused]] const ros::TimerEvent& evt)
+  void BalloonFilter::main_loop([[maybe_unused]] const ros::TimerEvent& evt)
   {
     load_dynparams(m_drmgr_ptr->config);
 
@@ -67,7 +67,7 @@ namespace balloon_planner
   //}
 
   /* update_current_estimate() method //{ */
-  bool BalloonPlanner::update_current_estimate(const std::vector<pos_cov_t>& measurements, const ros::Time& stamp, pos_cov_t& used_meas)
+  bool BalloonFilter::update_current_estimate(const std::vector<pos_cov_t>& measurements, const ros::Time& stamp, pos_cov_t& used_meas)
   {
     pos_cov_t closest_meas;
     bool meas_valid = find_closest_to(measurements, m_current_estimate.x, closest_meas, true);
@@ -76,11 +76,9 @@ namespace balloon_planner
       ROS_INFO("[%s]: Updating current estimate using point [%.2f, %.2f, %.2f]", m_node_name.c_str(), closest_meas.pos.x(), closest_meas.pos.y(),
                closest_meas.pos.z());
       const double dt = (stamp - m_current_estimate_last_update).toSec();
-      m_current_estimate.Q = dt * m_process_noise_std * Lkf::R_t::Identity();
-      m_current_estimate.prediction_step();
-      m_current_estimate.z = closest_meas.pos;
-      m_current_estimate.R = closest_meas.cov;
-      m_current_estimate.correction_step();
+      LKF::Q_t Q = m_process_noise_std * LKF::R_t::Identity();
+      m_current_estimate = m_lkf.predict(m_current_estimate, LKF::u_t(), Q, dt);
+      m_current_estimate = m_lkf.correct(m_current_estimate, closest_meas.pos, closest_meas.cov);
       /* m_current_estimate = m_filter_coeff*m_current_estimate + (1.0 - m_filter_coeff)*closest_balloon; */
       m_current_estimate_last_update = stamp;
       m_current_estimate_n_updates++;
@@ -95,7 +93,7 @@ namespace balloon_planner
   //}
 
   /* init_current_estimate() method //{ */
-  bool BalloonPlanner::init_current_estimate(const std::vector<pos_cov_t>& measurements, const ros::Time& stamp, pos_cov_t& used_meas)
+  bool BalloonFilter::init_current_estimate(const std::vector<pos_cov_t>& measurements, const ros::Time& stamp, pos_cov_t& used_meas)
   {
     pos_cov_t closest_meas;
     bool meas_valid = find_closest(measurements, closest_meas);
@@ -118,7 +116,7 @@ namespace balloon_planner
   //}
 
   /* to_output_message() method //{ */
-  geometry_msgs::PoseWithCovarianceStamped BalloonPlanner::to_output_message(const pos_cov_t& estimate, const std_msgs::Header& header)
+  geometry_msgs::PoseWithCovarianceStamped BalloonFilter::to_output_message(const pos_cov_t& estimate, const std_msgs::Header& header)
   {
     geometry_msgs::PoseWithCovarianceStamped ret;
 
@@ -149,7 +147,7 @@ namespace balloon_planner
   //}
 
   /* get_cur_mav_pos() method //{ */
-  pos_t BalloonPlanner::get_cur_mav_pos()
+  pos_t BalloonFilter::get_cur_mav_pos()
   {
     Eigen::Affine3d m2w_tf;
     bool tf_ok = get_transform_to_world(m_uav_frame_id, ros::Time::now(), m2w_tf);
@@ -161,7 +159,7 @@ namespace balloon_planner
   //}
 
   /* find_closest_to() method //{ */
-  bool BalloonPlanner::find_closest_to(const std::vector<pos_cov_t>& measurements, const pos_t& to_position, pos_cov_t& closest_out, bool use_gating)
+  bool BalloonFilter::find_closest_to(const std::vector<pos_cov_t>& measurements, const pos_t& to_position, pos_cov_t& closest_out, bool use_gating)
   {
     double min_dist = std::numeric_limits<double>::infinity();
     pos_cov_t closest_pt{std::numeric_limits<double>::quiet_NaN() * pos_t::Ones(), std::numeric_limits<double>::quiet_NaN() * cov_t::Ones()};
@@ -193,7 +191,7 @@ namespace balloon_planner
   //}
 
   /* find_closest() method //{ */
-  bool BalloonPlanner::find_closest(const std::vector<pos_cov_t>& measuremets, pos_cov_t& closest_out)
+  bool BalloonFilter::find_closest(const std::vector<pos_cov_t>& measuremets, pos_cov_t& closest_out)
   {
     pos_t cur_pos = get_cur_mav_pos();
     return find_closest_to(measuremets, cur_pos, closest_out, false);
@@ -201,7 +199,7 @@ namespace balloon_planner
   //}
 
   /* message_to_positions() method //{ */
-  std::vector<pos_cov_t> BalloonPlanner::message_to_positions(const detections_t& balloon_msg)
+  std::vector<pos_cov_t> BalloonFilter::message_to_positions(const detections_t& balloon_msg)
   {
     std::vector<pos_cov_t> ret;
 
@@ -235,7 +233,7 @@ namespace balloon_planner
   //}
 
   /* msg2cov() method //{ */
-  cov_t BalloonPlanner::msg2cov(const ros_cov_t& msg_cov)
+  cov_t BalloonFilter::msg2cov(const ros_cov_t& msg_cov)
   {
     cov_t cov;
     for (int r = 0; r < 3; r++)
@@ -250,14 +248,14 @@ namespace balloon_planner
   //}
 
   /* rotate_covariance() method //{ */
-  cov_t BalloonPlanner::rotate_covariance(const cov_t& covariance, const cov_t& rotation)
+  cov_t BalloonFilter::rotate_covariance(const cov_t& covariance, const cov_t& rotation)
   {
     return rotation * covariance * rotation.transpose();  // rotate the covariance to point in direction of est. position
   }
   //}
 
   /* point_in_sphere() method //{ */
-  bool BalloonPlanner::point_in_sphere(const pos_t& pt, const sphere_t sphere)
+  bool BalloonFilter::point_in_sphere(const pos_t& pt, const sphere_t sphere)
   {
     const double dist_from_center = (pt - sphere.center).norm();
     if (dist_from_center < sphere.radius)
@@ -267,7 +265,7 @@ namespace balloon_planner
   //}
 
   /* point_in_exclusion_zone() method //{ */
-  bool BalloonPlanner::point_in_exclusion_zone(const pos_t& pt, const std::vector<sphere_t>& exclusion_zones)
+  bool BalloonFilter::point_in_exclusion_zone(const pos_t& pt, const std::vector<sphere_t>& exclusion_zones)
   {
     for (const auto& zone : exclusion_zones)
     {
@@ -279,7 +277,7 @@ namespace balloon_planner
   //}
 
   /* point_valid() method //{ */
-  bool BalloonPlanner::point_valid(const pos_t& pt)
+  bool BalloonFilter::point_valid(const pos_t& pt)
   {
     const bool height_valid = pt.z() > m_z_bounds_min && pt.z() < m_z_bounds_max;
     const bool sane_values = !pt.array().isNaN().any() && !pt.array().isInf().any();
@@ -290,7 +288,7 @@ namespace balloon_planner
   //}
 
   /* reset_current_estimate() method //{ */
-  void BalloonPlanner::reset_current_estimate()
+  void BalloonFilter::reset_current_estimate()
   {
     m_current_estimate_exists = false;
     m_current_estimate_last_update = ros::Time::now();
@@ -300,7 +298,7 @@ namespace balloon_planner
   //}
 
   /* load_dynparams() method //{ */
-  void BalloonPlanner::load_dynparams(drcfg_t cfg)
+  void BalloonFilter::load_dynparams(drcfg_t cfg)
   {
     m_z_bounds_min = cfg.z_bounds__min;
     m_z_bounds_max = cfg.z_bounds__max;
@@ -312,7 +310,7 @@ namespace balloon_planner
 
   /* onInit() //{ */
 
-  void BalloonPlanner::onInit()
+  void BalloonFilter::onInit()
   {
 
     ROS_INFO("[%s]: Initializing", m_node_name.c_str());
@@ -333,7 +331,7 @@ namespace balloon_planner
     ROS_INFO("[%s]: LOADING STATIC PARAMETERS", m_node_name.c_str());
     mrs_lib::ParamLoader pl(nh, m_node_name);
 
-    double planning_period = pl.load_param2<double>("planning_period");
+    double filter_period = pl.load_param2<double>("filter_period");
     pl.load_param("world_frame", m_world_frame);
     pl.load_param("uav_frame_id", m_uav_frame_id);
     pl.load_param("gating_distance", m_gating_distance);
@@ -357,11 +355,11 @@ namespace balloon_planner
     m_sh_balloons =
         smgr.create_handler<detections_t, time_consistent>("balloon_detections", ros::Duration(5.0));
 
-    m_start_estimation_server = nh.advertiseService("start_estimation", &BalloonPlanner::start_estimation, this);
-    m_stop_estimation_server = nh.advertiseService("stop_estimation", &BalloonPlanner::stop_estimation, this);
-    m_reset_estimation_server = nh.advertiseService("reset_estimation", &BalloonPlanner::reset_estimation, this);
-    m_add_exclusion_zone_server = nh.advertiseService("add_exclusion_zone", &BalloonPlanner::add_exclusion_zone, this);
-    m_reset_exclusion_zones_server = nh.advertiseService("reset_exclusion_zones", &BalloonPlanner::reset_exclusion_zones, this);
+    m_start_estimation_server = nh.advertiseService("start_estimation", &BalloonFilter::start_estimation, this);
+    m_stop_estimation_server = nh.advertiseService("stop_estimation", &BalloonFilter::stop_estimation, this);
+    m_reset_estimation_server = nh.advertiseService("reset_estimation", &BalloonFilter::reset_estimation, this);
+    m_add_exclusion_zone_server = nh.advertiseService("add_exclusion_zone", &BalloonFilter::add_exclusion_zone, this);
+    m_reset_exclusion_zones_server = nh.advertiseService("reset_exclusion_zones", &BalloonFilter::reset_exclusion_zones, this);
     //}
 
     /* publishers //{ */
@@ -378,13 +376,13 @@ namespace balloon_planner
     //}
 
     {
-      Lkf::A_t A = Lkf::A_t::Identity();
-      Lkf::B_t B;
-      Lkf::H_t H = Lkf::H_t::Identity();
-      Lkf::P_t P = std::numeric_limits<double>::quiet_NaN() * Lkf::P_t::Identity();
-      Lkf::Q_t Q = m_process_noise_std * m_process_noise_std * Lkf::Q_t::Identity();
-      Lkf::R_t R = std::numeric_limits<double>::quiet_NaN() * Lkf::R_t::Identity();
-      m_current_estimate = Lkf(A, B, H, P, Q, R);
+      LKF::A_t A = LKF::A_t::Identity();
+      LKF::B_t B;
+      LKF::H_t H = LKF::H_t::Identity();
+      m_P = std::numeric_limits<double>::quiet_NaN() * LKF::P_t::Identity();
+      m_Q = m_process_noise_std * m_process_noise_std * LKF::Q_t::Identity();
+      m_R = std::numeric_limits<double>::quiet_NaN() * LKF::R_t::Identity();
+      m_lkf = LKF(A, B, H);
     }
     reset_current_estimate();
     m_is_initialized = true;
@@ -392,7 +390,7 @@ namespace balloon_planner
 
     /* timers  //{ */
 
-    m_main_loop_timer = nh.createTimer(ros::Duration(planning_period), &BalloonPlanner::main_loop, this);
+    m_main_loop_timer = nh.createTimer(ros::Duration(filter_period), &BalloonFilter::main_loop, this);
 
     //}
 
@@ -403,7 +401,7 @@ namespace balloon_planner
 
   /* service callbacks //{ */
 
-  bool BalloonPlanner::start_estimation(balloon_planner::StartEstimation::Request& req, balloon_planner::StartEstimation::Response& resp)
+  bool BalloonFilter::start_estimation(balloon_filter::StartEstimation::Request& req, balloon_filter::StartEstimation::Response& resp)
   {
     reset_current_estimate();
     m_initial_area = {Eigen::Vector3d(req.inital_point.x, req.inital_point.y, req.inital_point.z), req.radius};
@@ -415,7 +413,7 @@ namespace balloon_planner
     return true;
   }
 
-  bool BalloonPlanner::stop_estimation([[maybe_unused]] std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp)
+  bool BalloonFilter::stop_estimation([[maybe_unused]] std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp)
   {
     m_estimating = false;
     resp.message = "Stopped estimation.";
@@ -423,7 +421,7 @@ namespace balloon_planner
     return true;
   }
 
-  bool BalloonPlanner::reset_estimation([[maybe_unused]] std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp)
+  bool BalloonFilter::reset_estimation([[maybe_unused]] std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp)
   {
     reset_current_estimate();
     resp.message = "Estimation was reset.";
@@ -431,7 +429,7 @@ namespace balloon_planner
     return true;
   }
 
-  bool BalloonPlanner::add_exclusion_zone(balloon_planner::AddExclusionZone::Request& req, balloon_planner::AddExclusionZone::Response& resp)
+  bool BalloonFilter::add_exclusion_zone(balloon_filter::AddExclusionZone::Request& req, balloon_filter::AddExclusionZone::Response& resp)
   {
     const Eigen::Vector3d new_zone_pt(req.zone_center.x, req.zone_center.y, req.zone_center.z);
     const double new_zone_radius = req.zone_radius;
@@ -444,7 +442,7 @@ namespace balloon_planner
     return true;
   }
 
-  bool BalloonPlanner::reset_exclusion_zones([[maybe_unused]] std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp)
+  bool BalloonFilter::reset_exclusion_zones([[maybe_unused]] std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp)
   {
     m_exclusion_zones.clear();
     resp.message = "Exclusion zones were reset.";
@@ -454,7 +452,7 @@ namespace balloon_planner
 
   //}
 
-}  // namespace balloon_planner
+}  // namespace balloon_filter
 
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(balloon_planner::BalloonPlanner, nodelet::Nodelet)
+PLUGINLIB_EXPORT_CLASS(balloon_filter::BalloonFilter, nodelet::Nodelet)

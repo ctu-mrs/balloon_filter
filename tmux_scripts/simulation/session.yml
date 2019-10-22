@@ -41,10 +41,10 @@ windows:
       layout: even-vertical
       panes:
         - waitForControl; roslaunch object_detect object_detect.launch
-  - balloon_planner:
+  - balloon_filter:
       layout: even-vertical
       panes:
-        - waitForRos; roslaunch balloon_planner sim_plan.launch
+        - waitForRos; roslaunch balloon_filter sim_plan.launch
   # - compressed_republish:
   #     layout: even-vertical
   #     panes:

@@ -1,5 +1,5 @@
-#ifndef BALLOONPLANNER_H
-#define BALLOONPLANNER_H
+#ifndef BALLOONFILTER_H
+#define BALLOONFILTER_H
 
 /* includes //{ */
 
@@ -31,29 +31,29 @@
 #include <mrs_lib/ParamLoader.h>
 #include <mrs_lib/subscribe_handler.h>
 #include <mrs_lib/DynamicReconfigureMgr.h>
+#include <mrs_lib/lkf.h>
 
 // std
 #include <string>
 #include <mutex>
 
 // local includes
-#include <balloon_planner/PlanningParamsConfig.h>
-#include <balloon_planner/StartEstimation.h>
-#include <balloon_planner/AddExclusionZone.h>
-#include <balloon_planner/Lkf.h>
+#include <balloon_filter/FilterParamsConfig.h>
+#include <balloon_filter/StartEstimation.h>
+#include <balloon_filter/AddExclusionZone.h>
 #include <object_detect/PoseWithCovarianceArrayStamped.h>
 
 //}
 
-namespace balloon_planner
+namespace balloon_filter
 {
   // shortcut type to the dynamic reconfigure manager template instance
-  using drcfg_t = balloon_planner::PlanningParamsConfig;
+  using drcfg_t = balloon_filter::FilterParamsConfig;
   using drmgr_t = mrs_lib::DynamicReconfigureMgr<drcfg_t>;
   constexpr int lkf_n_states = 3;
   constexpr int lkf_n_inputs = 0;
   constexpr int lkf_n_measurements = 3;
-  using Lkf = Lkf_base<lkf_n_states, lkf_n_inputs, lkf_n_measurements>;
+  using LKF = mrs_lib::LKF<lkf_n_states, lkf_n_inputs, lkf_n_measurements>;
 
   using detections_t = object_detect::PoseWithCovarianceArrayStamped;
   using ros_poses_t = detections_t::_poses_type;
@@ -74,12 +74,12 @@ namespace balloon_planner
     double radius;
   };
 
-  /* //{ class BalloonPlanner */
+  /* //{ class BalloonFilter */
 
-  class BalloonPlanner : public nodelet::Nodelet
+  class BalloonFilter : public nodelet::Nodelet
   {
     public:
-      BalloonPlanner() : m_node_name("BalloonPlanner") {};
+      BalloonFilter() : m_node_name("BalloonFilter") {};
       virtual void onInit();
 
       bool m_is_initialized;
@@ -131,7 +131,11 @@ namespace balloon_planner
       bool m_estimating;
       sphere_t m_initial_area;
       bool m_current_estimate_exists;
-      Lkf m_current_estimate;
+      LKF::statecov_t m_current_estimate;
+      LKF m_lkf;
+      LKF::P_t m_P;
+      LKF::Q_t m_Q;
+      LKF::R_t m_R;
       ros::Time m_current_estimate_last_update;
       int m_current_estimate_n_updates;
       std::vector<sphere_t> m_exclusion_zones;
@@ -175,10 +179,10 @@ namespace balloon_planner
 
       std::vector<pos_cov_t> message_to_positions(const detections_t& balloon_msg);
 
-      bool start_estimation(balloon_planner::StartEstimation::Request& req, balloon_planner::StartEstimation::Response& resp);
+      bool start_estimation(balloon_filter::StartEstimation::Request& req, balloon_filter::StartEstimation::Response& resp);
       bool stop_estimation(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
       bool reset_estimation(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
-      bool add_exclusion_zone(balloon_planner::AddExclusionZone::Request& req, balloon_planner::AddExclusionZone::Response& resp);
+      bool add_exclusion_zone(balloon_filter::AddExclusionZone::Request& req, balloon_filter::AddExclusionZone::Response& resp);
       bool reset_exclusion_zones(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
 
       void load_dynparams(drcfg_t cfg);
@@ -187,6 +191,6 @@ namespace balloon_planner
   
   //}
 
-}  // namespace balloon_planner
+}  // namespace balloon_filter
 
 #endif
