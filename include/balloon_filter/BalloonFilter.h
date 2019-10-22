@@ -41,7 +41,8 @@
 #include <balloon_filter/FilterParamsConfig.h>
 #include <balloon_filter/StartEstimation.h>
 #include <balloon_filter/AddExclusionZone.h>
-#include <object_detect/PoseWithCovarianceArrayStamped.h>
+#include <object_detect/BallDetections.h>
+#include <object_detect/color_mapping.h>
 
 //}
 
@@ -55,10 +56,10 @@ namespace balloon_filter
   constexpr int lkf_n_measurements = 3;
   using LKF = mrs_lib::LKF<lkf_n_states, lkf_n_inputs, lkf_n_measurements>;
 
-  using detections_t = object_detect::PoseWithCovarianceArrayStamped;
-  using ros_poses_t = detections_t::_poses_type;
-  using ros_pose_t = ros_poses_t::value_type::_pose_type;
-  using ros_cov_t = ros_poses_t::value_type::_covariance_type;
+  using detections_t = object_detect::BallDetections;
+  using detection_t = object_detect::BallDetection;
+  using ros_pose_t = detection_t::_pose_type::_pose_type;
+  using ros_cov_t = detection_t::_pose_type::_covariance_type;
 
   using pos_t = Eigen::Matrix<double, lkf_n_states, 1>;
   using cov_t = Eigen::Matrix<double, lkf_n_states, lkf_n_states>;
@@ -139,6 +140,7 @@ namespace balloon_filter
       ros::Time m_current_estimate_last_update;
       int m_current_estimate_n_updates;
       std::vector<sphere_t> m_exclusion_zones;
+      object_detect::color_id_t m_filtered_color_id;
 
     private:
 

@@ -18,9 +18,9 @@ namespace balloon_filter
     {
       const auto balloons = *(m_sh_balloons->get_data());
 
-      if (!balloons.poses.empty())
+      if (!balloons.detections.empty())
       {
-        ROS_INFO("[%s]: Processing %lu new detections vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv", m_node_name.c_str(), balloons.poses.size());
+        ROS_INFO("[%s]: Processing %lu new detections vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv", m_node_name.c_str(), balloons.detections.size());
         auto measurements = message_to_positions(balloons);
         if (!measurements.empty())
         {
@@ -210,11 +210,18 @@ namespace balloon_filter
       return ret;
     const Eigen::Matrix3d s2w_rot = s2w_tf.rotation();
 
-    ret.reserve(balloon_msg.poses.size());
-    for (size_t it = 0; it < balloon_msg.poses.size(); it++)
+    ret.reserve(balloon_msg.detections.size());
+    for (size_t it = 0; it < balloon_msg.detections.size(); it++)
     {
-      const auto msg_pos = balloon_msg.poses[it].pose;
-      const auto msg_cov = balloon_msg.poses[it].covariance;
+      const auto& cur_ball = balloon_msg.detections[it];
+      const object_detect::color_id_t ball_color_id = object_detect::color_id_t(cur_ball.type);
+      if (ball_color_id != m_filtered_color_id)
+      {
+        ROS_INFO("[%s]: Skipping uninteresting ball with color '%s' (looking only for '%s')", m_node_name.c_str(), object_detect::color_name(ball_color_id).c_str(), object_detect::color_name(m_filtered_color_id).c_str());
+        continue;
+      }
+      const auto msg_pos = cur_ball.pose.pose;
+      const auto msg_cov = cur_ball.pose.covariance;
       const pos_t pos = s2w_tf * pos_t(msg_pos.position.x, msg_pos.position.y, msg_pos.position.z);
       if (point_valid(pos))
       {
@@ -338,6 +345,10 @@ namespace balloon_filter
     pl.load_param("max_time_since_update", m_max_time_since_update);
     pl.load_param("min_updates_to_confirm", m_min_updates_to_confirm);
     pl.load_param("process_noise_std", m_process_noise_std);
+
+    std::string filtered_color_name = pl.load_param2<std::string>("filtered_color");
+    std::transform(filtered_color_name.begin(), filtered_color_name.end(), filtered_color_name.begin(), ::tolower);
+    m_filtered_color_id = object_detect::color_id(filtered_color_name);
 
     if (!pl.loaded_successfully())
     {

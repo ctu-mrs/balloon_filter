@@ -1,3 +1,4 @@
+filter_color: "white"
 filter_period: 0.01 # seconds
 world_frame: "local_origin"
 gating_distance: 4.0 # meters
