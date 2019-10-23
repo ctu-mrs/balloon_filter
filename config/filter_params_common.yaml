@@ -1,7 +1,8 @@
-filter_color: "white"
+filtered_color: "red"
 filter_period: 0.01 # seconds
 world_frame: "local_origin"
 gating_distance: 4.0 # meters
 max_time_since_update: 2.0 # seconds
 min_updates_to_confirm: 10
 process_noise_std: 1 # meters
+max_speed: 1.0 # metres per second

@@ -76,10 +76,31 @@ namespace balloon_filter
       ROS_INFO("[%s]: Updating current estimate using point [%.2f, %.2f, %.2f]", m_node_name.c_str(), closest_meas.pos.x(), closest_meas.pos.y(),
                closest_meas.pos.z());
       const double dt = (stamp - m_current_estimate_last_update).toSec();
-      LKF::Q_t Q = m_process_noise_std * LKF::R_t::Identity();
+
+      LKF::Q_t Q = m_process_noise_std * LKF::Q_t::Identity(6, 6);
+      LKF::A_t A = LKF::A_t::Identity(6, 6);
+      A(0, 3) = A(1, 4) = A(2, 5) = dt*m_process_noise_std;
+      m_lkf.A = A;
+
+      LKF::x_t x = LKF::x_t::Zero(6, 1);
+      x.block<3, 1>(0, 0) = m_current_estimate.x;
+      m_current_estimate.x = x;
+
+      LKF::P_t P = m_process_noise_std * LKF::P_t::Ones(6, 6);
+      P.block<3, 3>(0, 0) = m_current_estimate.P;
+      m_current_estimate.P = P;
+
       m_current_estimate = m_lkf.predict(m_current_estimate, LKF::u_t(), Q, dt);
+
+      x = m_current_estimate.x.block(0, 0, 3, 1);
+      P = m_current_estimate.P.block(0, 0, 3, 3);
+      m_current_estimate.x = x;
+      m_current_estimate.P = P;
+
+      A = LKF::A_t::Identity(3, 3);
+      m_lkf.A = A;
       m_current_estimate = m_lkf.correct(m_current_estimate, closest_meas.pos, closest_meas.cov);
-      /* m_current_estimate = m_filter_coeff*m_current_estimate + (1.0 - m_filter_coeff)*closest_balloon; */
+
       m_current_estimate_last_update = stamp;
       m_current_estimate_n_updates++;
       used_meas = closest_meas;
@@ -228,9 +249,11 @@ namespace balloon_filter
         const cov_t cov = rotate_covariance(msg2cov(msg_cov), s2w_rot);
         const pos_cov_t pos_cov{pos, cov};
         ret.push_back(pos_cov);
+        ROS_INFO("[%s]: Adding valid point [%.2f, %.2f, %.2f] (original: [%.2f %.2f %.2f])", m_node_name.c_str(), pos.x(), pos.y(), pos.z(),
+                 msg_pos.position.x, msg_pos.position.y, msg_pos.position.z);
       } else
       {
-        ROS_INFO("[%s]: Skipping invalid point [%.2f, %.2f, %.2f] (original: [%.2f %.2f %.2f])", m_node_name.c_str(), pos.x(), pos.y(), pos.z(),
+        ROS_WARN("[%s]: Skipping invalid point [%.2f, %.2f, %.2f] (original: [%.2f %.2f %.2f])", m_node_name.c_str(), pos.x(), pos.y(), pos.z(),
                  msg_pos.position.x, msg_pos.position.y, msg_pos.position.z);
       }
     }
@@ -345,6 +368,7 @@ namespace balloon_filter
     pl.load_param("max_time_since_update", m_max_time_since_update);
     pl.load_param("min_updates_to_confirm", m_min_updates_to_confirm);
     pl.load_param("process_noise_std", m_process_noise_std);
+    pl.load_param("max_speed", m_max_speed);
 
     std::string filtered_color_name = pl.load_param2<std::string>("filtered_color");
     std::transform(filtered_color_name.begin(), filtered_color_name.end(), filtered_color_name.begin(), ::tolower);
@@ -387,12 +411,9 @@ namespace balloon_filter
     //}
 
     {
-      LKF::A_t A = LKF::A_t::Identity();
+      LKF::A_t A = LKF::A_t::Identity(3, 3);
       LKF::B_t B;
-      LKF::H_t H = LKF::H_t::Identity();
-      m_P = std::numeric_limits<double>::quiet_NaN() * LKF::P_t::Identity();
-      m_Q = m_process_noise_std * m_process_noise_std * LKF::Q_t::Identity();
-      m_R = std::numeric_limits<double>::quiet_NaN() * LKF::R_t::Identity();
+      LKF::H_t H = LKF::H_t::Identity(3, lkf_n_measurements);
       m_lkf = LKF(A, B, H);
     }
     reset_current_estimate();

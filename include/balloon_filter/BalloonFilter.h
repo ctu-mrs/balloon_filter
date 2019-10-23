@@ -51,7 +51,7 @@ namespace balloon_filter
   // shortcut type to the dynamic reconfigure manager template instance
   using drcfg_t = balloon_filter::FilterParamsConfig;
   using drmgr_t = mrs_lib::DynamicReconfigureMgr<drcfg_t>;
-  constexpr int lkf_n_states = 3;
+  constexpr int lkf_n_states = -1;
   constexpr int lkf_n_inputs = 0;
   constexpr int lkf_n_measurements = 3;
   using LKF = mrs_lib::LKF<lkf_n_states, lkf_n_inputs, lkf_n_measurements>;
@@ -61,8 +61,8 @@ namespace balloon_filter
   using ros_pose_t = detection_t::_pose_type::_pose_type;
   using ros_cov_t = detection_t::_pose_type::_covariance_type;
 
-  using pos_t = Eigen::Matrix<double, lkf_n_states, 1>;
-  using cov_t = Eigen::Matrix<double, lkf_n_states, lkf_n_states>;
+  using pos_t = Eigen::Matrix<double, 3, 1>;
+  using cov_t = Eigen::Matrix<double, 3, 3>;
   struct pos_cov_t
   {
     pos_t pos;
@@ -108,6 +108,7 @@ namespace balloon_filter
       double m_process_noise_std;
       double m_z_bounds_min;
       double m_z_bounds_max;
+      double m_max_speed;
       //}
 
       /* ROS related variables (subscribers, timers etc.) //{ */
@@ -134,9 +135,6 @@ namespace balloon_filter
       bool m_current_estimate_exists;
       LKF::statecov_t m_current_estimate;
       LKF m_lkf;
-      LKF::P_t m_P;
-      LKF::Q_t m_Q;
-      LKF::R_t m_R;
       ros::Time m_current_estimate_last_update;
       int m_current_estimate_n_updates;
       std::vector<sphere_t> m_exclusion_zones;
