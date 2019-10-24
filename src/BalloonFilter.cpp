@@ -59,7 +59,7 @@ namespace balloon_filter
       std_msgs::Header header;
       header.frame_id = m_world_frame;
       header.stamp = m_current_estimate_last_update;
-      m_pub_chosen_balloon.publish(to_output_message({m_current_estimate.x, m_current_estimate.P}, header));
+      m_pub_chosen_balloon.publish(to_output_message(m_current_estimate, header));
       ROS_INFO_THROTTLE(1.0, "[%s]: Current chosen balloon position: [%.2f, %.2f, %.2f]", m_node_name.c_str(), m_current_estimate.x.x(),
                         m_current_estimate.x.y(), m_current_estimate.x.z());
     }
@@ -70,35 +70,19 @@ namespace balloon_filter
   bool BalloonFilter::update_current_estimate(const std::vector<pos_cov_t>& measurements, const ros::Time& stamp, pos_cov_t& used_meas)
   {
     pos_cov_t closest_meas;
-    bool meas_valid = find_closest_to(measurements, m_current_estimate.x, closest_meas, true);
+    bool meas_valid = find_closest_to(measurements, m_current_estimate.x.block<3, 1>(0, 0), closest_meas, true);
     if (meas_valid)
     {
       ROS_INFO("[%s]: Updating current estimate using point [%.2f, %.2f, %.2f]", m_node_name.c_str(), closest_meas.pos.x(), closest_meas.pos.y(),
                closest_meas.pos.z());
       const double dt = (stamp - m_current_estimate_last_update).toSec();
 
-      LKF::Q_t Q = m_process_noise_std * LKF::Q_t::Identity(6, 6);
-      LKF::A_t A = LKF::A_t::Identity(6, 6);
-      A(0, 3) = A(1, 4) = A(2, 5) = dt*m_process_noise_std;
+      LKF::Q_t Q = m_process_noise_std * LKF::Q_t::Identity();
+      LKF::A_t A = LKF::A_t::Identity();
+      A(0, 3) = A(1, 4) = A(2, 5) = dt;
       m_lkf.A = A;
-
-      LKF::x_t x = LKF::x_t::Zero(6, 1);
-      x.block<3, 1>(0, 0) = m_current_estimate.x;
-      m_current_estimate.x = x;
-
-      LKF::P_t P = m_process_noise_std * LKF::P_t::Ones(6, 6);
-      P.block<3, 3>(0, 0) = m_current_estimate.P;
-      m_current_estimate.P = P;
 
       m_current_estimate = m_lkf.predict(m_current_estimate, LKF::u_t(), Q, dt);
-
-      x = m_current_estimate.x.block(0, 0, 3, 1);
-      P = m_current_estimate.P.block(0, 0, 3, 3);
-      m_current_estimate.x = x;
-      m_current_estimate.P = P;
-
-      A = LKF::A_t::Identity(3, 3);
-      m_lkf.A = A;
       m_current_estimate = m_lkf.correct(m_current_estimate, closest_meas.pos, closest_meas.cov);
 
       m_current_estimate_last_update = stamp;
@@ -122,8 +106,10 @@ namespace balloon_filter
     {
       ROS_INFO("[%s]: Initializing estimate using point [%.2f, %.2f, %.2f]", m_node_name.c_str(), closest_meas.pos.x(), closest_meas.pos.y(),
                closest_meas.pos.z());
-      m_current_estimate.x = closest_meas.pos;
-      m_current_estimate.P = closest_meas.cov;
+      m_current_estimate.x = LKF::x_t::Zero();
+      m_current_estimate.x.block<3, 1>(0, 0) = closest_meas.pos;
+      m_current_estimate.P = m_process_noise_std*LKF::P_t::Identity();
+      m_current_estimate.P.block<3, 3>(0, 0) = closest_meas.cov;
       m_current_estimate_exists = true;
       m_current_estimate_last_update = stamp;
       m_current_estimate_n_updates = 1;
@@ -137,6 +123,35 @@ namespace balloon_filter
   //}
 
   /* to_output_message() method //{ */
+  geometry_msgs::PoseWithCovarianceStamped BalloonFilter::to_output_message(const LKF::statecov_t& estimate, const std_msgs::Header& header)
+  {
+    geometry_msgs::PoseWithCovarianceStamped ret;
+
+    ret.header = header;
+    ret.pose.pose.position.x = estimate.x.x();
+    ret.pose.pose.position.y = estimate.x.y();
+    ret.pose.pose.position.z = estimate.x.z();
+    ret.pose.pose.orientation.x = 0.0;
+    ret.pose.pose.orientation.y = 0.0;
+    ret.pose.pose.orientation.z = 0.0;
+    ret.pose.pose.orientation.w = 1.0;
+
+    for (int r = 0; r < 6; r++)
+    {
+      for (int c = 0; c < 6; c++)
+      {
+        if (r < 3 && c < 3)
+          ret.pose.covariance[r * 6 + c] = estimate.P(r, c);
+        else if (r == c)
+          ret.pose.covariance[r * 6 + c] = 666;
+        else
+          ret.pose.covariance[r * 6 + c] = 0.0;
+      }
+    }
+
+    return ret;
+  }
+
   geometry_msgs::PoseWithCovarianceStamped BalloonFilter::to_output_message(const pos_cov_t& estimate, const std_msgs::Header& header)
   {
     geometry_msgs::PoseWithCovarianceStamped ret;
@@ -411,9 +426,13 @@ namespace balloon_filter
     //}
 
     {
-      LKF::A_t A = LKF::A_t::Identity(3, 3);
+      LKF::A_t A = LKF::A_t::Identity();
       LKF::B_t B;
-      LKF::H_t H = LKF::H_t::Identity(3, lkf_n_measurements);
+      LKF::H_t H; H <<
+        1, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, 0, 0,
+        0, 0, 1, 0, 0, 0
+        ;
       m_lkf = LKF(A, B, H);
     }
     reset_current_estimate();

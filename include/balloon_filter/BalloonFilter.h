@@ -51,7 +51,7 @@ namespace balloon_filter
   // shortcut type to the dynamic reconfigure manager template instance
   using drcfg_t = balloon_filter::FilterParamsConfig;
   using drmgr_t = mrs_lib::DynamicReconfigureMgr<drcfg_t>;
-  constexpr int lkf_n_states = -1;
+  constexpr int lkf_n_states = 6;
   constexpr int lkf_n_inputs = 0;
   constexpr int lkf_n_measurements = 3;
   using LKF = mrs_lib::LKF<lkf_n_states, lkf_n_inputs, lkf_n_measurements>;
@@ -172,6 +172,7 @@ namespace balloon_filter
       bool update_current_estimate(const std::vector<pos_cov_t>& measurements, const ros::Time& stamp, pos_cov_t& used_meas);
       bool init_current_estimate(const std::vector<pos_cov_t>& measurements, const ros::Time& stamp, pos_cov_t& used_meas);
       void reset_current_estimate();
+      geometry_msgs::PoseWithCovarianceStamped to_output_message(const LKF::statecov_t& estimate, const std_msgs::Header& header);
       geometry_msgs::PoseWithCovarianceStamped to_output_message(const pos_cov_t& estimate, const std_msgs::Header& header);
       pos_t get_cur_mav_pos();
       bool find_closest_to(const std::vector<pos_cov_t>& measurements, const pos_t& to_position, pos_cov_t& closest_out, bool use_gating = false);
