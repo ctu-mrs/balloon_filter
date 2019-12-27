@@ -22,7 +22,8 @@
     <node pkg="nodelet" type="nodelet" name="balloon_filter" args="$(arg nodelet_load)" output="screen" launch-prefix="$(arg launch_prefix)" >
 
       <param name="uav_name" type="string" value="$(arg uav_name)" />
-      <param name="uav_frame_id" type="string" value="fcu_$(arg uav_name)" />
+      <param name="uav_frame_id" type="string" value="$(arg uav_name)/fcu" />
+      <param name="world_frame_id" type="string" value="$(arg uav_name)/local_origin" />
       <rosparam file="$(find balloon_filter)/config/filter_params_common.yaml" command="load" />
       <rosparam file="$(find balloon_filter)/config/filter_params_$(arg uav_name).yaml" command="load" />
 

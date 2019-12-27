@@ -35,7 +35,7 @@ namespace balloon_filter
           if (used_meas_valid)
           {
             std_msgs::Header header;
-            header.frame_id = m_world_frame;
+            header.frame_id = m_world_frame_id;
             header.stamp = m_current_estimate_last_update;
             m_pub_used_meas.publish(to_output_message(used_meas, header));
           }
@@ -57,7 +57,7 @@ namespace balloon_filter
     if (m_current_estimate_exists && m_current_estimate_n_updates > m_min_updates_to_confirm)
     {
       std_msgs::Header header;
-      header.frame_id = m_world_frame;
+      header.frame_id = m_world_frame_id;
       header.stamp = m_current_estimate_last_update;
       m_pub_chosen_balloon.publish(to_output_message(m_current_estimate, header));
       ROS_INFO_THROTTLE(1.0, "[%s]: Current chosen balloon position: [%.2f, %.2f, %.2f]", m_node_name.c_str(), m_current_estimate.x.x(),
@@ -189,7 +189,6 @@ namespace balloon_filter
     bool tf_ok = get_transform_to_world(m_uav_frame_id, ros::Time::now(), m2w_tf);
     if (!tf_ok)
       return pos_t(0, 0, 0);
-    ;
     return m2w_tf.translation();
   }
   //}
@@ -377,7 +376,7 @@ namespace balloon_filter
     mrs_lib::ParamLoader pl(nh, m_node_name);
 
     double filter_period = pl.load_param2<double>("filter_period");
-    pl.load_param("world_frame", m_world_frame);
+    pl.load_param("world_frame_id", m_world_frame_id);
     pl.load_param("uav_frame_id", m_uav_frame_id);
     pl.load_param("gating_distance", m_gating_distance);
     pl.load_param("max_time_since_update", m_max_time_since_update);
