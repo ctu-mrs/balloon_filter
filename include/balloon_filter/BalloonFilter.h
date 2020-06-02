@@ -27,10 +27,10 @@
 #include <std_srvs/Trigger.h>
 
 // MRS stuff
-#include <mrs_lib/Profiler.h>
-#include <mrs_lib/ParamLoader.h>
+#include <mrs_lib/profiler.h>
+#include <mrs_lib/param_loader.h>
 #include <mrs_lib/subscribe_handler.h>
-#include <mrs_lib/DynamicReconfigureMgr.h>
+#include <mrs_lib/dynamic_reconfigure_mgr.h>
 #include <mrs_lib/lkf.h>
 
 // std
@@ -115,7 +115,7 @@ namespace balloon_filter
       std::unique_ptr<drmgr_t> m_drmgr_ptr;
       tf2_ros::Buffer m_tf_buffer;
       std::unique_ptr<tf2_ros::TransformListener> m_tf_listener_ptr;
-      mrs_lib::SubscribeHandlerPtr<detections_t> m_sh_balloons;
+      mrs_lib::SubscribeHandler<detections_t> m_sh_balloons;
 
       ros::Publisher m_pub_chosen_balloon;
       ros::Publisher m_pub_used_meas;

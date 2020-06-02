@@ -14,9 +14,9 @@ namespace balloon_filter
       return;
     }
 
-    if (m_sh_balloons->new_data())
+    if (m_sh_balloons.newMsg())
     {
-      const auto balloons = *(m_sh_balloons->get_data());
+      const auto balloons = *(m_sh_balloons.getMsg());
 
       if (!balloons.detections.empty())
       {
@@ -249,12 +249,6 @@ namespace balloon_filter
     for (size_t it = 0; it < balloon_msg.detections.size(); it++)
     {
       const auto& cur_ball = balloon_msg.detections[it];
-      const object_detect::color_id_t ball_color_id = object_detect::color_id_t(cur_ball.type);
-      if (ball_color_id != m_filtered_color_id)
-      {
-        ROS_INFO("[%s]: Skipping uninteresting ball with color '%s' (looking only for '%s')", m_node_name.c_str(), object_detect::color_name(ball_color_id).c_str(), object_detect::color_name(m_filtered_color_id).c_str());
-        continue;
-      }
       const auto msg_pos = cur_ball.pose.pose;
       const auto msg_cov = cur_ball.pose.covariance;
       const pos_t pos = s2w_tf * pos_t(msg_pos.position.x, msg_pos.position.y, msg_pos.position.z);
@@ -375,20 +369,20 @@ namespace balloon_filter
     ROS_INFO("[%s]: LOADING STATIC PARAMETERS", m_node_name.c_str());
     mrs_lib::ParamLoader pl(nh, m_node_name);
 
-    double filter_period = pl.load_param2<double>("filter_period");
-    pl.load_param("world_frame_id", m_world_frame_id);
-    pl.load_param("uav_frame_id", m_uav_frame_id);
-    pl.load_param("gating_distance", m_gating_distance);
-    pl.load_param("max_time_since_update", m_max_time_since_update);
-    pl.load_param("min_updates_to_confirm", m_min_updates_to_confirm);
-    pl.load_param("process_noise_std", m_process_noise_std);
-    pl.load_param("max_speed", m_max_speed);
+    double filter_period = pl.loadParam2<double>("filter_period");
+    pl.loadParam("world_frame_id", m_world_frame_id);
+    pl.loadParam("uav_frame_id", m_uav_frame_id);
+    pl.loadParam("gating_distance", m_gating_distance);
+    pl.loadParam("max_time_since_update", m_max_time_since_update);
+    pl.loadParam("min_updates_to_confirm", m_min_updates_to_confirm);
+    pl.loadParam("process_noise_std", m_process_noise_std);
+    pl.loadParam("max_speed", m_max_speed);
 
-    std::string filtered_color_name = pl.load_param2<std::string>("filtered_color");
+    std::string filtered_color_name = pl.loadParam2<std::string>("filtered_color");
     std::transform(filtered_color_name.begin(), filtered_color_name.end(), filtered_color_name.begin(), ::tolower);
     m_filtered_color_id = object_detect::color_id(filtered_color_name);
 
-    if (!pl.loaded_successfully())
+    if (!pl.loadedSuccessfully())
     {
       ROS_ERROR("Some compulsory parameters were not loaded successfully, ending the node");
       ros::shutdown();
@@ -399,10 +393,11 @@ namespace balloon_filter
     /* subscribers //{ */
 
     m_tf_listener_ptr = std::make_unique<tf2_ros::TransformListener>(m_tf_buffer, m_node_name);
-    mrs_lib::SubscribeMgr smgr(nh);
-    constexpr bool time_consistent = true;
-    m_sh_balloons =
-        smgr.create_handler<detections_t, time_consistent>("balloon_detections", ros::Duration(5.0));
+    mrs_lib::SubscribeHandlerOptions shopts;
+    shopts.nh = nh;
+    shopts.node_name = m_node_name;
+    shopts.no_message_timeout = ros::Duration(5.0);
+    mrs_lib::construct_object(m_sh_balloons, shopts, "balloon_detections");
 
     m_start_estimation_server = nh.advertiseService("start_estimation", &BalloonFilter::start_estimation, this);
     m_stop_estimation_server = nh.advertiseService("stop_estimation", &BalloonFilter::stop_estimation, this);
