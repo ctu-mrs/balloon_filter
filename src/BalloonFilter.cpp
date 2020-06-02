@@ -153,9 +153,9 @@ namespace balloon_filter
     }
 
     ret.header = header;
-    ret.twist.twist.linear.x = estimate.x.x();
-    ret.twist.twist.linear.y = estimate.x.y();
-    ret.twist.twist.linear.z = estimate.x.z();
+    ret.twist.twist.linear.x = vel.x();
+    ret.twist.twist.linear.y = vel.y();
+    ret.twist.twist.linear.z = vel.z();
     ret.twist.twist.angular.x = 0;
     ret.twist.twist.angular.y = 0;
     ret.twist.twist.angular.z = 0;

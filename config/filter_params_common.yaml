@@ -1,5 +1,5 @@
 filter_period: 0.01 # seconds
-world_frame: "local_origin"
+world_frame: "gps_origin"
 gating_distance: 4.0 # meters
 max_time_since_update: 5.0 # seconds
 min_updates_to_confirm: 10
