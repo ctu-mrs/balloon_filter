@@ -123,18 +123,21 @@ namespace balloon_filter
   //}
 
   /* to_output_message() method //{ */
-  geometry_msgs::PoseWithCovarianceStamped BalloonFilter::to_output_message(const LKF::statecov_t& estimate, const std_msgs::Header& header)
+  nav_msgs::Odometry BalloonFilter::to_output_message(const LKF::statecov_t& estimate, const std_msgs::Header& header)
   {
-    geometry_msgs::PoseWithCovarianceStamped ret;
+    nav_msgs::Odometry ret;
+
+    Eigen::Vector3d vel = estimate.x.block<3, 1>(3, 0);
+    Eigen::Quaterniond quat = Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d(1, 0, 0), vel);
 
     ret.header = header;
     ret.pose.pose.position.x = estimate.x.x();
     ret.pose.pose.position.y = estimate.x.y();
     ret.pose.pose.position.z = estimate.x.z();
-    ret.pose.pose.orientation.x = 0.0;
-    ret.pose.pose.orientation.y = 0.0;
-    ret.pose.pose.orientation.z = 0.0;
-    ret.pose.pose.orientation.w = 1.0;
+    ret.pose.pose.orientation.x = quat.x();
+    ret.pose.pose.orientation.y = quat.y();
+    ret.pose.pose.orientation.z = quat.z();
+    ret.pose.pose.orientation.w = quat.w();
 
     for (int r = 0; r < 6; r++)
     {
@@ -143,9 +146,30 @@ namespace balloon_filter
         if (r < 3 && c < 3)
           ret.pose.covariance[r * 6 + c] = estimate.P(r, c);
         else if (r == c)
-          ret.pose.covariance[r * 6 + c] = 666;
+          ret.pose.covariance[r * 6 + c] = 1.0;
         else
           ret.pose.covariance[r * 6 + c] = 0.0;
+      }
+    }
+
+    ret.header = header;
+    ret.twist.twist.linear.x = estimate.x.x();
+    ret.twist.twist.linear.y = estimate.x.y();
+    ret.twist.twist.linear.z = estimate.x.z();
+    ret.twist.twist.angular.x = 0;
+    ret.twist.twist.angular.y = 0;
+    ret.twist.twist.angular.z = 0;
+
+    for (int r = 0; r < 6; r++)
+    {
+      for (int c = 0; c < 6; c++)
+      {
+        if (r < 3 && c < 3)
+          ret.twist.covariance[r * 6 + c] = estimate.P(r+3, c+3);
+        else if (r == c)
+          ret.twist.covariance[r * 6 + c] = 1.0;
+        else
+          ret.twist.covariance[r * 6 + c] = 0.0;
       }
     }
 
@@ -318,9 +342,17 @@ namespace balloon_filter
   bool BalloonFilter::point_valid(const pos_t& pt)
   {
     const bool height_valid = pt.z() > m_z_bounds_min && pt.z() < m_z_bounds_max;
+    if (!height_valid)
+        ROS_WARN("[%s]: Invalid height %.2fm (must be within <%.2f, %.2f>)!", m_node_name.c_str(), pt.z(), m_z_bounds_min, m_z_bounds_max);
     const bool sane_values = !pt.array().isNaN().any() && !pt.array().isInf().any();
+    if (!sane_values)
+        ROS_WARN("[%s]: Point contains insane values!", m_node_name.c_str());
     const bool not_excluded = !point_in_exclusion_zone(pt, m_exclusion_zones);
+    if (!not_excluded)
+        ROS_WARN("[%s]: Point is inside an exclusion zone!", m_node_name.c_str());
     const bool in_area = point_in_sphere(pt, m_initial_area);
+    if (!in_area)
+        ROS_WARN("[%s]: Point is not inside the search sphere (sphere center: [%.2f, %.2f, %.2f], radius: %.2f])!", m_node_name.c_str(), m_initial_area.center.x(), m_initial_area.center.y(), m_initial_area.center.z(), m_initial_area.radius);
     return height_valid && sane_values && not_excluded && in_area;
   }
   //}
@@ -404,8 +436,8 @@ namespace balloon_filter
 
     /* publishers //{ */
 
-    m_pub_chosen_balloon = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("balloon_chosen_out", 1);
-    m_pub_used_meas = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("balloon_detection_used", 1);
+    m_pub_chosen_balloon = nh.advertise<nav_msgs::Odometry>("chosen_out", 1);
+    m_pub_used_meas = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("detection_used", 1);
 
     //}
 
