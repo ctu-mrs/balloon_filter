@@ -378,10 +378,6 @@ namespace balloon_filter
     pl.loadParam("process_noise_std", m_process_noise_std);
     pl.loadParam("max_speed", m_max_speed);
 
-    std::string filtered_color_name = pl.loadParam2<std::string>("filtered_color");
-    std::transform(filtered_color_name.begin(), filtered_color_name.end(), filtered_color_name.begin(), ::tolower);
-    m_filtered_color_id = object_detect::color_id(filtered_color_name);
-
     if (!pl.loadedSuccessfully())
     {
       ROS_ERROR("Some compulsory parameters were not loaded successfully, ending the node");

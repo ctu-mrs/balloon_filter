@@ -42,7 +42,6 @@
 #include <balloon_filter/StartEstimation.h>
 #include <balloon_filter/AddExclusionZone.h>
 #include <object_detect/BallDetections.h>
-#include <object_detect/color_mapping.h>
 
 //}
 
@@ -138,7 +137,6 @@ namespace balloon_filter
       ros::Time m_current_estimate_last_update;
       int m_current_estimate_n_updates;
       std::vector<sphere_t> m_exclusion_zones;
-      object_detect::color_id_t m_filtered_color_id;
 
     private:
 
