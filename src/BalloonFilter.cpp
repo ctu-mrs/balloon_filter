@@ -18,9 +18,9 @@ namespace balloon_filter
     {
       const auto balloons = *(m_sh_balloons.getMsg());
 
-      if (!balloons.detections.empty())
+      if (!balloons.poses.empty())
       {
-        ROS_INFO("[%s]: Processing %lu new detections vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv", m_node_name.c_str(), balloons.detections.size());
+        ROS_INFO("[%s]: Processing %lu new detections vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv", m_node_name.c_str(), balloons.poses.size());
         auto measurements = message_to_positions(balloons);
         if (!measurements.empty())
         {
@@ -269,12 +269,12 @@ namespace balloon_filter
       return ret;
     const Eigen::Matrix3d s2w_rot = s2w_tf.rotation();
 
-    ret.reserve(balloon_msg.detections.size());
-    for (size_t it = 0; it < balloon_msg.detections.size(); it++)
+    ret.reserve(balloon_msg.poses.size());
+    for (size_t it = 0; it < balloon_msg.poses.size(); it++)
     {
-      const auto& cur_ball = balloon_msg.detections[it];
-      const auto msg_pos = cur_ball.pose.pose;
-      const auto msg_cov = cur_ball.pose.covariance;
+      const auto& cur_ball = balloon_msg.poses[it];
+      const auto msg_pos = cur_ball.pose;
+      const auto msg_cov = cur_ball.covariance;
       const pos_t pos = s2w_tf * pos_t(msg_pos.position.x, msg_pos.position.y, msg_pos.position.z);
       if (point_valid(pos))
       {
@@ -425,7 +425,7 @@ namespace balloon_filter
     shopts.nh = nh;
     shopts.node_name = m_node_name;
     shopts.no_message_timeout = ros::Duration(5.0);
-    mrs_lib::construct_object(m_sh_balloons, shopts, "balloon_detections");
+    mrs_lib::construct_object(m_sh_balloons, shopts, "detections");
 
     m_start_estimation_server = nh.advertiseService("start_estimation", &BalloonFilter::start_estimation, this);
     m_stop_estimation_server = nh.advertiseService("stop_estimation", &BalloonFilter::stop_estimation, this);
@@ -458,8 +458,11 @@ namespace balloon_filter
       m_lkf = LKF(A, B, H);
     }
     reset_current_estimate();
+
+    m_initial_area = {Eigen::Vector3d(0,0,0), 666.0};
+
     m_is_initialized = true;
-    m_estimating = false;
+    m_estimating = true;
 
     /* timers  //{ */
 

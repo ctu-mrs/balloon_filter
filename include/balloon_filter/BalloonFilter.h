@@ -33,6 +33,8 @@
 #include <mrs_lib/dynamic_reconfigure_mgr.h>
 #include <mrs_lib/lkf.h>
 
+#include <mrs_msgs/PoseWithCovarianceArrayStamped.h>
+
 // std
 #include <string>
 #include <mutex>
@@ -55,11 +57,10 @@ namespace balloon_filter
   constexpr int lkf_n_measurements = 3;
   using LKF = mrs_lib::LKF<lkf_n_states, lkf_n_inputs, lkf_n_measurements>;
 
-  using detections_t = object_detect::BallDetections;
-  using detection_t = object_detect::BallDetection;
-  using ros_pose_t = detection_t::_pose_type::_pose_type;
-  using ros_cov_t = detection_t::_pose_type::_covariance_type;
-
+  using detections_t = mrs_msgs::PoseWithCovarianceArrayStamped;
+  using detection_t = mrs_msgs::PoseWithCovarianceIdentified;
+  using ros_pose_t = detection_t::_pose_type;
+  using ros_cov_t = detection_t::_covariance_type;
   using pos_t = Eigen::Matrix<double, 3, 1>;
   using cov_t = Eigen::Matrix<double, 3, 3>;
   struct pos_cov_t
