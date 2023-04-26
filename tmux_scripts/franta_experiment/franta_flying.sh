@@ -35,7 +35,7 @@ pre_input="mkdir -p $MAIN_DIR/$PROJECT_NAME"
 # * "new line" after the command    => the command will be called after start
 # * NO "new line" after the command => the command will wait for user's <enter>
 input=(
-  'Rosbag' 'waitForOffboard; rosrun mrs_uav_general record.sh
+  'Rosbag' 'waitForOffboard; rosrun balloon_filter record.sh
 '
   'Nimbro' 'waitForRos; rosrun mrs_uav_general run_nimbro.py ~/franta_ws/src/balloon_filter/config/nimbro/nimbro.yaml ~/franta_ws/src/balloon_filter/config/nimbro/uav_names.yaml
 '
