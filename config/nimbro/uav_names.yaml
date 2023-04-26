@@ -22,6 +22,6 @@ network:
   robot_names: [
 
     nekovfra,
-    uav16, uav17,
+    uav4, uav16, uav17,
 
   ]
