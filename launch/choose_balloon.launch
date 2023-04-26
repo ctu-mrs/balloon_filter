@@ -23,14 +23,14 @@
 
       <param name="uav_name" type="string" value="$(arg uav_name)" />
       <param name="uav_frame_id" type="string" value="$(arg uav_name)/fcu" />
-      <param name="world_frame_id" type="string" value="$(arg uav_name)/local_origin" />
+      <param name="world_frame_id" type="string" value="$(arg uav_name)/gps_origin" />
       <rosparam file="$(find balloon_filter)/config/filter_params_common.yaml" command="load" />
 
       <!-- Subscribers -->
-      <remap from="~balloon_detections" to="object_detect/detected_balls" />
+      <remap from="~balloon_detections" to="object_detect/detected_balls2" />
 
       <!-- Publishers -->
-      <remap from="~chosen_out" to="~chosen_out" />
+      <remap from="~chosen_out" to="~chosen_out2" />
       <remap from="~detection_used" to="~detection_used" />
 
     </node>

@@ -85,6 +85,18 @@ namespace balloon_filter
       m_current_estimate = m_lkf.predict(m_current_estimate, LKF::u_t(), Q, dt);
       m_current_estimate = m_lkf.correct(m_current_estimate, closest_meas.pos, closest_meas.cov);
 
+      if (m_constrain_vel_to_plane)
+      {
+        /* m_current_estimate.x(2) = 0.0; */
+        m_current_estimate.x(5) = 0.0;
+      }
+
+      const Eigen::Vector3d vel = m_current_estimate.x.tail<3>();
+      if (vel.norm() > m_max_speed)
+      {
+        m_current_estimate.x.tail<3>() = m_max_speed*vel/vel.norm();
+      }
+
       m_current_estimate_last_update = stamp;
       m_current_estimate_n_updates++;
       used_meas = closest_meas;
@@ -108,6 +120,8 @@ namespace balloon_filter
                closest_meas.pos.z());
       m_current_estimate.x = LKF::x_t::Zero();
       m_current_estimate.x.block<3, 1>(0, 0) = closest_meas.pos;
+      /* if (mvel__constrain_to_plane) */
+      /*   m_current_estimate.x(2) = 0.0; */
       m_current_estimate.P = m_process_noise_std*LKF::P_t::Identity();
       m_current_estimate.P.block<3, 3>(0, 0) = closest_meas.cov;
       m_current_estimate_exists = true;
@@ -409,6 +423,7 @@ namespace balloon_filter
     pl.loadParam("min_updates_to_confirm", m_min_updates_to_confirm);
     pl.loadParam("process_noise_std", m_process_noise_std);
     pl.loadParam("max_speed", m_max_speed);
+    pl.loadParam("constrain_vel_to_plane", m_constrain_vel_to_plane);
 
     if (!pl.loadedSuccessfully())
     {
@@ -459,7 +474,8 @@ namespace balloon_filter
     }
     reset_current_estimate();
     m_is_initialized = true;
-    m_estimating = false;
+    m_estimating = true;
+    m_initial_area = {Eigen::Vector3d(0.0, 0.0, 0.0), 1e4};
 
     /* timers  //{ */
 
