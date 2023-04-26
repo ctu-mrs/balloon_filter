@@ -1,0 +1,7 @@
+topics: # topics published out of this machine to receivers specified above
+ - name: "balloon_filter/chosen_out"
+   compress: true # enable bz2 compression
+   rate: 4.0
+ - name: "control_manager/trajectory_reference"
+   compress: true # enable bz2 compression
+   rate: 4.0
