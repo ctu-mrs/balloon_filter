@@ -49,17 +49,21 @@ namespace balloon_filter
         ROS_INFO_THROTTLE(1.0, "[%s]: Empty detections message received", m_node_name.c_str());
       }
     }
-    if ((ros::Time::now() - m_current_estimate_last_update).toSec() >= m_max_time_since_update)
+
+    const auto now = ros::Time::now();
+    if ((now - m_current_estimate_last_update).toSec() >= m_max_time_since_update)
     {
       reset_current_estimate();
     }
 
-    if (m_current_estimate_exists && m_current_estimate_n_updates > m_min_updates_to_confirm)
+    const auto dur_since_pub = now - m_last_pub;
+    if (dur_since_pub > m_publish_period && m_current_estimate_exists && m_current_estimate_n_updates > m_min_updates_to_confirm)
     {
       std_msgs::Header header;
       header.frame_id = m_world_frame_id;
       header.stamp = m_current_estimate_last_update;
       m_pub_chosen_balloon.publish(to_output_message(m_current_estimate, header));
+      m_last_pub = now;
       ROS_INFO_THROTTLE(1.0, "[%s]: Current chosen balloon position: [%.2f, %.2f, %.2f]", m_node_name.c_str(), m_current_estimate.x.x(),
                         m_current_estimate.x.y(), m_current_estimate.x.z());
     }
@@ -418,6 +422,7 @@ namespace balloon_filter
     double filter_period = pl.loadParam2<double>("filter_period");
     pl.loadParam("world_frame_id", m_world_frame_id);
     pl.loadParam("uav_frame_id", m_uav_frame_id);
+    pl.loadParam("publish_period", m_publish_period);
     pl.loadParam("gating_distance", m_gating_distance);
     pl.loadParam("max_time_since_update", m_max_time_since_update);
     pl.loadParam("min_updates_to_confirm", m_min_updates_to_confirm);

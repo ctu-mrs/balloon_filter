@@ -1,4 +1,5 @@
 filter_period: 0.01 # seconds
+publish_period: 0.25 # seconds
 gating_distance: 4.0 # meters
 max_time_since_update: 5.0 # seconds
 min_updates_to_confirm: 3

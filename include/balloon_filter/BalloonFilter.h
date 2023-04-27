@@ -100,6 +100,7 @@ namespace balloon_filter
       /* Parameters, loaded from ROS //{ */
       std::string m_world_frame_id;
       std::string m_uav_frame_id;
+      ros::Duration m_publish_period;
       double m_filter_coeff;
       double m_gating_distance;
       double m_max_time_since_update;
@@ -133,6 +134,7 @@ namespace balloon_filter
       bool m_estimating;
       sphere_t m_initial_area;
       bool m_current_estimate_exists;
+      ros::Time m_last_pub;
       LKF::statecov_t m_current_estimate;
       LKF m_lkf;
       ros::Time m_current_estimate_last_update;

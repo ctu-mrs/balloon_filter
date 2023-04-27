@@ -27,10 +27,10 @@
       <rosparam file="$(find balloon_filter)/config/filter_params_common.yaml" command="load" />
 
       <!-- Subscribers -->
-      <remap from="~balloon_detections" to="object_detect/detected_balls2" />
+      <remap from="~balloon_detections" to="object_detect/detected_balls" />
 
       <!-- Publishers -->
-      <remap from="~chosen_out" to="~chosen_out2" />
+      <remap from="~chosen_out" to="~chosen_out" />
       <remap from="~detection_used" to="~detection_used" />
 
     </node>
