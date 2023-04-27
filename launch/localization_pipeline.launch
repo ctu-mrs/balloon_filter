@@ -15,7 +15,7 @@
       <param name="num_worker_threads" value="16" />
     </node>
 
-    <node name="realsense_color_tf_publisher" pkg="tf2_ros" type="static_transform_publisher" args="0 -0.09 -0.04 0.5 0.5 -0.5 0.5 fcu_$(arg uav_name) $(arg uav_name)/$(arg realsense_namespace)/link" />
+    <node name="realsense_color_tf_publisher" pkg="tf2_ros" type="static_transform_publisher" args="0 -0.09 -0.04 0.5 0.5 -0.5 0.5 $(arg uav_name)/fcu $(arg uav_name)/$(arg realsense_namespace)/link" />
 
   </group>
     

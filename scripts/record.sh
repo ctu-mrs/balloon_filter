@@ -20,7 +20,12 @@ exclude=(
 '(.*)debug_image(.*)'
 
 # Every topic containing "compressed"
-# '(.*)compressed(.*)'
+'(.*)color_picker(.*)'
+
+# Every topic containing "compressed"
+# '(.*)compressedDepth(.*)'
+# Every topic containing "compressed"
+'(.*)depth/(.*)'
 # Every topic containing "image_raw"
 '(.*)image_raw'
 # Every topic containing "theora"
