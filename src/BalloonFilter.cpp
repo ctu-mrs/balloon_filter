@@ -49,17 +49,21 @@ namespace balloon_filter
         ROS_INFO_THROTTLE(1.0, "[%s]: Empty detections message received", m_node_name.c_str());
       }
     }
-    if ((ros::Time::now() - m_current_estimate_last_update).toSec() >= m_max_time_since_update)
+
+    const auto now = ros::Time::now();
+    if ((now - m_current_estimate_last_update).toSec() >= m_max_time_since_update)
     {
       reset_current_estimate();
     }
 
-    if (m_current_estimate_exists && m_current_estimate_n_updates > m_min_updates_to_confirm)
+    const auto dur_since_pub = now - m_last_pub;
+    if (dur_since_pub > m_publish_period && m_current_estimate_exists && m_current_estimate_n_updates > m_min_updates_to_confirm)
     {
       std_msgs::Header header;
       header.frame_id = m_world_frame_id;
       header.stamp = m_current_estimate_last_update;
       m_pub_chosen_balloon.publish(to_output_message(m_current_estimate, header));
+      m_last_pub = now;
       ROS_INFO_THROTTLE(1.0, "[%s]: Current chosen balloon position: [%.2f, %.2f, %.2f]", m_node_name.c_str(), m_current_estimate.x.x(),
                         m_current_estimate.x.y(), m_current_estimate.x.z());
     }
@@ -85,6 +89,18 @@ namespace balloon_filter
       m_current_estimate = m_lkf.predict(m_current_estimate, LKF::u_t(), Q, dt);
       m_current_estimate = m_lkf.correct(m_current_estimate, closest_meas.pos, closest_meas.cov);
 
+      if (m_constrain_vel_to_plane)
+      {
+        /* m_current_estimate.x(2) = 0.0; */
+        m_current_estimate.x(5) = 0.0;
+      }
+
+      const Eigen::Vector3d vel = m_current_estimate.x.tail<3>();
+      if (vel.norm() > m_max_speed)
+      {
+        m_current_estimate.x.tail<3>() = m_max_speed*vel/vel.norm();
+      }
+
       m_current_estimate_last_update = stamp;
       m_current_estimate_n_updates++;
       used_meas = closest_meas;
@@ -108,6 +124,8 @@ namespace balloon_filter
                closest_meas.pos.z());
       m_current_estimate.x = LKF::x_t::Zero();
       m_current_estimate.x.block<3, 1>(0, 0) = closest_meas.pos;
+      /* if (mvel__constrain_to_plane) */
+      /*   m_current_estimate.x(2) = 0.0; */
       m_current_estimate.P = m_process_noise_std*LKF::P_t::Identity();
       m_current_estimate.P.block<3, 3>(0, 0) = closest_meas.cov;
       m_current_estimate_exists = true;
@@ -404,11 +422,13 @@ namespace balloon_filter
     double filter_period = pl.loadParam2<double>("filter_period");
     pl.loadParam("world_frame_id", m_world_frame_id);
     pl.loadParam("uav_frame_id", m_uav_frame_id);
+    pl.loadParam("publish_period", m_publish_period);
     pl.loadParam("gating_distance", m_gating_distance);
     pl.loadParam("max_time_since_update", m_max_time_since_update);
     pl.loadParam("min_updates_to_confirm", m_min_updates_to_confirm);
     pl.loadParam("process_noise_std", m_process_noise_std);
     pl.loadParam("max_speed", m_max_speed);
+    pl.loadParam("constrain_vel_to_plane", m_constrain_vel_to_plane);
 
     if (!pl.loadedSuccessfully())
     {
@@ -459,7 +479,8 @@ namespace balloon_filter
     }
     reset_current_estimate();
     m_is_initialized = true;
-    m_estimating = false;
+    m_estimating = true;
+    m_initial_area = {Eigen::Vector3d(0.0, 0.0, 0.0), 1e4};
 
     /* timers  //{ */
 
