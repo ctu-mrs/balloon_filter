@@ -43,11 +43,13 @@ input=(
 '
   'Status' 'waitForRos; roslaunch mrs_uav_status status.launch
 '
-  'Control' 'waitForRos; roslaunch mrs_uav_general core.launch
+  'RTK' 'waitForRos; roslaunch mrs_serial rtk.launch
+'
+  'Control' 'waitForRos; roslaunch mrs_uav_general core.launch config_trajectory_generation:=./custom_configs/trajectory_generation_config.yaml config_constraint_manager:=./custom_configs/constraint_manager.yaml config_control_manager:=./custom_configs/control_manager.yaml config_mpc_tracker:=./custom_configs/mpc_tracker.yaml config_odometry:=./custom_configs/odometry.yaml config_uav_manager:=./custom_configs/uav_manager.yaml config_uav_names:=./custom_configs/uav_names.yaml config_landoff_tracker:=./custom_configs/landoff_tracker.yaml
 '
   'Balloon_detection' 'waitForRos; roslaunch balloon_filter localization_pipeline.launch
 '
-  'AutoStart' 'waitForRos; roslaunch mrs_uav_general automatic_start.launch
+  'AutoStart' 'waitForRos; roslaunch mrs_uav_general automatic_start.launch custom_config:=./custom_configs/automatic_start.yaml
 '
   'slow_odom' 'waitForRos; rostopic echo /'"$UAV_NAME"'/odometry/slow_odom
 '
