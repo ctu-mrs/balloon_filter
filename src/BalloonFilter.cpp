@@ -73,15 +73,17 @@ namespace balloon_filter
   /* update_current_estimate() method //{ */
   bool BalloonFilter::update_current_estimate(const std::vector<pos_cov_t>& measurements, const ros::Time& stamp, pos_cov_t& used_meas)
   {
-    pos_cov_t closest_meas;
-    bool meas_valid = find_closest_to(measurements, m_current_estimate.x.block<3, 1>(0, 0), closest_meas, true);
-    if (meas_valid)
+    const auto closest_meas_opt = find_closest_to(measurements, m_current_estimate.x.block<3, 1>(0, 0), true);
+    if (closest_meas_opt.has_value())
     {
+      const auto closest_meas = closest_meas_opt.value();
       ROS_INFO("[%s]: Updating current estimate using point [%.2f, %.2f, %.2f]", m_node_name.c_str(), closest_meas.pos.x(), closest_meas.pos.y(),
                closest_meas.pos.z());
       const double dt = (stamp - m_current_estimate_last_update).toSec();
 
-      LKF::Q_t Q = m_process_noise_std * LKF::Q_t::Identity();
+      LKF::Q_t Q = LKF::Q_t::Identity();
+      Q.block<3, 3>(0, 0) *= m_process_noise_std_pos;
+      Q.block<3, 3>(3, 3) *= m_process_noise_std_vel;
       LKF::A_t A = LKF::A_t::Identity();
       A(0, 3) = A(1, 4) = A(2, 5) = dt;
       m_lkf.A = A;
@@ -101,42 +103,50 @@ namespace balloon_filter
         m_current_estimate.x.tail<3>() = m_max_speed*vel/vel.norm();
       }
 
+      ROS_INFO("[%s]: Updated estimate is [%.2f, %.2f, %.2f] with velocity [%.2f, %.2f, %.2f] (norm: %.2fm/s)", m_node_name.c_str(),
+          m_current_estimate.x.x(), m_current_estimate.x.y(), m_current_estimate.x.z(),
+          m_current_estimate.x(3), m_current_estimate.x(4), m_current_estimate.x(5),
+          m_current_estimate.x.tail<3>().norm()
+          );
+
       m_current_estimate_last_update = stamp;
       m_current_estimate_n_updates++;
       used_meas = closest_meas;
+      return true;
     } else
     {
       ROS_INFO("[%s]: No point is close enough to [%.2f, %.2f, %.2f]", m_node_name.c_str(), m_current_estimate.x.x(), m_current_estimate.x.y(),
                m_current_estimate.x.z());
+      return false;
     }
-    return meas_valid;
   }
   //}
 
   /* init_current_estimate() method //{ */
   bool BalloonFilter::init_current_estimate(const std::vector<pos_cov_t>& measurements, const ros::Time& stamp, pos_cov_t& used_meas)
   {
-    pos_cov_t closest_meas;
-    bool meas_valid = find_closest(measurements, closest_meas);
-    if (meas_valid)
+    const auto closest_meas_opt = find_closest(measurements);
+    if (closest_meas_opt.has_value())
     {
+      const auto closest_meas = closest_meas_opt.value();
       ROS_INFO("[%s]: Initializing estimate using point [%.2f, %.2f, %.2f]", m_node_name.c_str(), closest_meas.pos.x(), closest_meas.pos.y(),
                closest_meas.pos.z());
       m_current_estimate.x = LKF::x_t::Zero();
       m_current_estimate.x.block<3, 1>(0, 0) = closest_meas.pos;
       /* if (mvel__constrain_to_plane) */
       /*   m_current_estimate.x(2) = 0.0; */
-      m_current_estimate.P = m_process_noise_std*LKF::P_t::Identity();
+      m_current_estimate.P = m_process_noise_std_vel*LKF::P_t::Identity();
       m_current_estimate.P.block<3, 3>(0, 0) = closest_meas.cov;
       m_current_estimate_exists = true;
       m_current_estimate_last_update = stamp;
       m_current_estimate_n_updates = 1;
       used_meas = closest_meas;
+      return true;
     } else
     {
       ROS_INFO("[%s]: No point is valid for estimate initialization", m_node_name.c_str());
+      return false;
     }
-    return meas_valid;
   }
   //}
 
@@ -236,8 +246,11 @@ namespace balloon_filter
   //}
 
   /* find_closest_to() method //{ */
-  bool BalloonFilter::find_closest_to(const std::vector<pos_cov_t>& measurements, const pos_t& to_position, pos_cov_t& closest_out, bool use_gating)
+  std::optional<pos_cov_t> BalloonFilter::find_closest_to(const std::vector<pos_cov_t>& measurements, const pos_t& to_position, bool use_gating)
   {
+    if (measurements.empty())
+      return std::nullopt;
+
     double min_dist = std::numeric_limits<double>::infinity();
     pos_cov_t closest_pt{std::numeric_limits<double>::quiet_NaN() * pos_t::Ones(), std::numeric_limits<double>::quiet_NaN() * cov_t::Ones()};
     for (const auto& pt : measurements)
@@ -249,29 +262,19 @@ namespace balloon_filter
         closest_pt = pt;
       }
     }
-    if (use_gating)
-    {
-      if (min_dist < m_gating_distance)
-      {
-        closest_out = closest_pt;
-        return true;
-      } else
-      {
-        return false;
-      }
-    } else
-    {
-      closest_out = closest_pt;
-      return true;
-    }
+
+    if (use_gating && min_dist >= m_gating_distance)
+      return std::nullopt;
+    else
+      return closest_pt;
   }
   //}
 
   /* find_closest() method //{ */
-  bool BalloonFilter::find_closest(const std::vector<pos_cov_t>& measuremets, pos_cov_t& closest_out)
+  std::optional<pos_cov_t> BalloonFilter::find_closest(const std::vector<pos_cov_t>& measuremets)
   {
-    pos_t cur_pos = get_cur_mav_pos();
-    return find_closest_to(measuremets, cur_pos, closest_out, false);
+    const pos_t cur_pos = get_cur_mav_pos();
+    return find_closest_to(measuremets, cur_pos, false);
   }
   //}
 
@@ -296,11 +299,22 @@ namespace balloon_filter
       const pos_t pos = s2w_tf * pos_t(msg_pos.position.x, msg_pos.position.y, msg_pos.position.z);
       if (point_valid(pos))
       {
+        pos_t pos_constrained = pos;
+        if (m_constrain_pos_to_plane)
+        {
+          const pos_t dir = (pos - s2w_tf.translation()).normalized();
+          const double dist = pos.z() / dir.z();
+          pos_constrained = pos - dist*dir;
+        }
+
         const cov_t cov = rotate_covariance(msg2cov(msg_cov), s2w_rot);
-        const pos_cov_t pos_cov{pos, cov};
+        const pos_cov_t pos_cov{pos_constrained, cov};
         ret.push_back(pos_cov);
-        ROS_INFO("[%s]: Adding valid point [%.2f, %.2f, %.2f] (original: [%.2f %.2f %.2f])", m_node_name.c_str(), pos.x(), pos.y(), pos.z(),
-                 msg_pos.position.x, msg_pos.position.y, msg_pos.position.z);
+        ROS_INFO("[%s]: Adding valid point [%.2f, %.2f, %.2f] (original: [%.2f %.2f %.2f], before constraint: [%.2f, %.2f, %.2f])", m_node_name.c_str(),
+                 pos_constrained.x(), pos_constrained.y(), pos.z(),
+                 msg_pos.position.x, msg_pos.position.y, msg_pos.position.z,
+                 pos.x(), pos.y(), pos.z()
+                 );
       } else
       {
         ROS_WARN("[%s]: Skipping invalid point [%.2f, %.2f, %.2f] (original: [%.2f %.2f %.2f])", m_node_name.c_str(), pos.x(), pos.y(), pos.z(),
@@ -426,9 +440,11 @@ namespace balloon_filter
     pl.loadParam("gating_distance", m_gating_distance);
     pl.loadParam("max_time_since_update", m_max_time_since_update);
     pl.loadParam("min_updates_to_confirm", m_min_updates_to_confirm);
-    pl.loadParam("process_noise_std", m_process_noise_std);
+    pl.loadParam("process_noise_std/position", m_process_noise_std_pos);
+    pl.loadParam("process_noise_std/velocity", m_process_noise_std_vel);
     pl.loadParam("max_speed", m_max_speed);
-    pl.loadParam("constrain_vel_to_plane", m_constrain_vel_to_plane);
+    pl.loadParam("constrain_to_plane/position", m_constrain_pos_to_plane);
+    pl.loadParam("constrain_to_plane/velocity", m_constrain_vel_to_plane);
 
     if (!pl.loadedSuccessfully())
     {

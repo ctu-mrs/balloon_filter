@@ -1,11 +1,15 @@
 filter_period: 0.01 # seconds
 publish_period: 0.25 # seconds
-gating_distance: 4.0 # meters
-max_time_since_update: 5.0 # seconds
+gating_distance: 2.0 # meters
+max_time_since_update: 2.0 # seconds
 min_updates_to_confirm: 3
-process_noise_std: 0.3 # meters
+process_noise_std:
+  position: 0.3 # meters
+  velocity: 0.05 # meters
 max_speed: 1.0 # metres per second
-constrain_vel_to_plane: false # if true, the z coordinate will be zeroed after every correction
+constrain_to_plane:
+  velocity: true # if true, the z coordinate will be zeroed after every correction
+  position: true # if true, the z coordinate will be zeroed before correction by projecting the detection z=0
 z_bounds: # measurements outside these bounds will be ignored
   min: -2.0  # metres
-  max: 3 # metres
+  max: 2 # metres

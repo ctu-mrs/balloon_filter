@@ -105,11 +105,13 @@ namespace balloon_filter
       double m_gating_distance;
       double m_max_time_since_update;
       double m_min_updates_to_confirm;
-      double m_process_noise_std;
+      double m_process_noise_std_pos;
+      double m_process_noise_std_vel;
       double m_z_bounds_min;
       double m_z_bounds_max;
       double m_max_speed;
       bool m_constrain_vel_to_plane;
+      bool m_constrain_pos_to_plane;
       //}
 
       /* ROS related variables (subscribers, timers etc.) //{ */
@@ -176,8 +178,8 @@ namespace balloon_filter
       nav_msgs::Odometry to_output_message(const LKF::statecov_t& estimate, const std_msgs::Header& header);
       geometry_msgs::PoseWithCovarianceStamped to_output_message(const pos_cov_t& estimate, const std_msgs::Header& header);
       pos_t get_cur_mav_pos();
-      bool find_closest_to(const std::vector<pos_cov_t>& measurements, const pos_t& to_position, pos_cov_t& closest_out, bool use_gating = false);
-      bool find_closest(const std::vector<pos_cov_t>& measurements, pos_cov_t& closest_out);
+      std::optional<pos_cov_t> find_closest_to(const std::vector<pos_cov_t>& measurements, const pos_t& to_position, bool use_gating);
+      std::optional<pos_cov_t> find_closest(const std::vector<pos_cov_t>& measuremets);
 
       std::vector<pos_cov_t> message_to_positions(const detections_t& balloon_msg);
 
