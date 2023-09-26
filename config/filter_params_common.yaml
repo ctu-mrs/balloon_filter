@@ -5,5 +5,5 @@ min_updates_to_confirm: 10
 process_noise_std: 0.1 # meters
 max_speed: 2.0 # metres per second
 z_bounds: # measurements outside these bounds will be ignored
-  min: -0.5  # metres
-  max: 4 # metres
+  min: 4  # metres
+  max: 20 # metres

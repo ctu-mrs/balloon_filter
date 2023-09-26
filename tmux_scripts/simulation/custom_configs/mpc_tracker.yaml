@@ -1,5 +1,0 @@
-mrs_collision_avoidance:
-  enable: false
-
-cvxgenMpc:
-  no_overshoots: false # disable for more aggresive flight

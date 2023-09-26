@@ -29,7 +29,8 @@
 
       <!-- Subscribers -->
       <!-- <remap from="~balloon_detections" to="object_detect/detected_balls" /> -->
-      <remap from="~detections" to="position_estimator/detected_objects_posearr" />
+      <!-- <remap from="~detections" to="position_estimator/detected_objects_posearr" /> -->
+      <remap from="~detections" to="lift_detector/detections" />
 
       <!-- Publishers -->
       <remap from="~chosen_out" to="~chosen_out" />

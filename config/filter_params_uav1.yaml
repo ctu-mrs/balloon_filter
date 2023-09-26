@@ -1,3 +1,0 @@
-z_bounds: # measurements outside these bounds will be ignored
-  min: 1  # metres
-  max: 9.6 # metres
