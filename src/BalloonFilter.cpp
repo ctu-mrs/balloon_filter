@@ -459,7 +459,7 @@ namespace balloon_filter
     }
     reset_current_estimate();
 
-    m_initial_area = {Eigen::Vector3d(0,0,0), 666.0};
+    m_initial_area = {Eigen::Vector3d(0,0,0), std::numeric_limits<double>::infinity()};
 
     m_is_initialized = true;
     m_estimating = true;
