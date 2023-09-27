@@ -13,7 +13,6 @@ find_package(catkin REQUIRED COMPONENTS
   mrs_lib
   pcl_ros
   message_generation
-  object_detect
   )
 
 # include Eigen3

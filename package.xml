@@ -18,7 +18,6 @@
   <depend>roscpp</depend>
   <depend>std_msgs</depend>
   <depend>mrs_msgs</depend>
-  <depend>object_detect</depend>
   <depend>nodelet</depend>
 
   <build_depend>message_generation</build_depend>

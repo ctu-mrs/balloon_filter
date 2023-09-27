@@ -43,7 +43,6 @@
 #include <balloon_filter/FilterParamsConfig.h>
 #include <balloon_filter/StartEstimation.h>
 #include <balloon_filter/AddExclusionZone.h>
-#include <object_detect/BallDetections.h>
 
 //}
 
