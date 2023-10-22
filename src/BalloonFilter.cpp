@@ -59,9 +59,15 @@ namespace balloon_filter
       std_msgs::Header header;
       header.frame_id = m_world_frame_id;
       header.stamp = m_current_estimate_last_update;
-      m_pub_chosen_balloon.publish(to_output_message(m_current_estimate, header));
-      ROS_INFO_THROTTLE(1.0, "[%s]: Current chosen balloon position: [%.2f, %.2f, %.2f]", m_node_name.c_str(), m_current_estimate.x.x(),
-                        m_current_estimate.x.y(), m_current_estimate.x.z());
+      auto current_estimate = m_current_estimate;
+      if (m_publish_zero_xy_velocity && current_estimate.x.size() >= 6)
+      {
+        current_estimate.x(3) = 0;
+        current_estimate.x(4) = 0;
+      }
+      m_pub_chosen_balloon.publish(to_output_message(current_estimate, header));
+      ROS_INFO_THROTTLE(1.0, "[%s]: Current chosen balloon position: [%.2f, %.2f, %.2f]", m_node_name.c_str(), current_estimate.x.x(),
+                        current_estimate.x.y(), current_estimate.x.z());
     }
   }
   //}
@@ -409,6 +415,7 @@ namespace balloon_filter
     pl.loadParam("min_updates_to_confirm", m_min_updates_to_confirm);
     pl.loadParam("process_noise_std", m_process_noise_std);
     pl.loadParam("max_speed", m_max_speed);
+    pl.loadParam("publish_zero_xy_velocity", m_publish_zero_xy_velocity);
 
     if (!pl.loadedSuccessfully())
     {

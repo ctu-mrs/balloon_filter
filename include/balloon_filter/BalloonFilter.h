@@ -108,6 +108,7 @@ namespace balloon_filter
       double m_z_bounds_min;
       double m_z_bounds_max;
       double m_max_speed;
+      bool m_publish_zero_xy_velocity;
       //}
 
       /* ROS related variables (subscribers, timers etc.) //{ */

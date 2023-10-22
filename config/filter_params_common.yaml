@@ -4,6 +4,7 @@ max_time_since_update: 5.0 # seconds
 min_updates_to_confirm: 10
 process_noise_std: 0.1 # meters
 max_speed: 2.0 # metres per second
+publish_zero_xy_velocity: true
 z_bounds: # measurements outside these bounds will be ignored
   min: 2  # metres
   max: 22 # metres
