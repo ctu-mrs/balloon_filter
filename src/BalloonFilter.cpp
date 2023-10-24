@@ -64,6 +64,7 @@ namespace balloon_filter
       {
         current_estimate.x(3) = 0;
         current_estimate.x(4) = 0;
+        current_estimate.x(5) = 0;
       }
       m_pub_chosen_balloon.publish(to_output_message(current_estimate, header));
       ROS_INFO_THROTTLE(1.0, "[%s]: Current chosen balloon position: [%.2f, %.2f, %.2f]", m_node_name.c_str(), current_estimate.x.x(),
